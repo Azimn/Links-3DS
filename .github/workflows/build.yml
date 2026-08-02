@@ -244,7 +244,10 @@ jobs:
             -Wextra \
             -Werror \
             -Wno-unused-parameter \
-            -include dirent.h \
+            -DHAVE_DIRENT_H=1 \
+            -DHAVE_SYS_TIME_H=1 \
+            -DHAVE_GETTIMEOFDAY=1 \
+            -DHAVE_STRUCT_TIMEZONE=1 \
             -march=armv6k \
             -mtune=mpcore \
             -mfloat-abi=hard \
