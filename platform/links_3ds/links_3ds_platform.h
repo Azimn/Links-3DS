@@ -10,6 +10,8 @@
 #define LINKS_3DS_SCREEN_HEIGHT 240
 #define LINKS_3DS_INPUT_INTERVAL_MS 16
 
+struct graphics_device;
+
 typedef enum links_3ds_key {
     LINKS_3DS_KEY_NONE = 0,
     LINKS_3DS_KEY_UP,
@@ -49,5 +51,8 @@ const links_3ds_event_sink_t *links_3ds_platform_get_event_sink(void);
 void links_3ds_platform_start_input_timer(void);
 void links_3ds_platform_stop_input_timer(void);
 void links_3ds_platform_poll(void);
+
+void links_3ds_event_bridge_attach(struct graphics_device *dev);
+void links_3ds_event_bridge_detach(struct graphics_device *dev);
 
 #endif
