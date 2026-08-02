@@ -16,7 +16,8 @@ bool links_3ds_platform_init(void)
     }
 
     memset(&active_sink, 0, sizeof(active_sink));
-    gfx_set_cursor_pos(GFX_3DS_TOP_WIDTH / 2, GFX_3DS_TOP_HEIGHT / 2);
+    gfx_set_cursor_pos(LINKS_3DS_SCREEN_WIDTH / 2,
+                       LINKS_3DS_SCREEN_HEIGHT / 2);
     gfx_set_cursor_visible(true);
     platform_ready = true;
     return true;
