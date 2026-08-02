@@ -115,3 +115,78 @@ jobs:
           path: artifacts/
           if-no-files-found: error
           retention-days: 30
+
+  validate-driver:
+    name: Compile Links 2.30 3DS driver
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure devkitPro PATH
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${DEVKITARM}/bin" >> "${GITHUB_PATH}"
+          printf '%s\n' "${DEVKITPRO}/tools/bin" >> "${GITHUB_PATH}"
+          test -x "${DEVKITARM}/bin/arm-none-eabi-gcc"
+
+      - name: Fetch verified Links 2.30 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/fetch-links.sh
+          scripts/fetch-links.sh
+
+      - name: Generate Links configuration header
+        shell: bash
+        working-directory: upstream/links-2.30
+        run: |
+          set -euo pipefail
+          ./configure \
+            --host=arm-none-eabi \
+            CC=arm-none-eabi-gcc \
+            CFLAGS="-Os -march=armv6k -mtune=mpcore -mfloat-abi=hard" \
+            > configure-3ds.log 2>&1 || {
+              cat configure-3ds.log
+              test -f config.log && cat config.log
+              exit 1
+            }
+          test -s cfg.h
+
+      - name: Compile staged 3DS graphics driver
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/driver-check
+          arm-none-eabi-gcc \
+            -std=gnu11 \
+            -Os \
+            -Wall \
+            -Wextra \
+            -Werror \
+            -march=armv6k \
+            -mtune=mpcore \
+            -mfloat-abi=hard \
+            -ffunction-sections \
+            -fdata-sections \
+            -DG \
+            -DGRDRV_3DS \
+            -Iupstream/links-2.30 \
+            -Isource \
+            -Iplatform/links_3ds \
+            -c src-3ds/graphics_3ds.c \
+            -o build/driver-check/graphics_3ds.o
+          test -s build/driver-check/graphics_3ds.o
+          arm-none-eabi-size build/driver-check/graphics_3ds.o
+
+      - name: Upload driver validation object
+        uses: actions/upload-artifact@v4
+        with:
+          name: links-3ds-driver-syntax-check
+          path: build/driver-check/graphics_3ds.o
+          if-no-files-found: error
+          retention-days: 14
