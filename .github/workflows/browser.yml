@@ -1,0 +1,95 @@
+name: Build Links Browser 3DSX
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/browser.yml'
+      - 'scripts/build-browser-3ds.sh'
+      - 'scripts/fetch-links.sh'
+      - 'source/**'
+      - 'src-3ds/**'
+      - 'platform/links_3ds/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/browser.yml'
+      - 'scripts/build-browser-3ds.sh'
+      - 'scripts/fetch-links.sh'
+      - 'source/**'
+      - 'src-3ds/**'
+      - 'platform/links_3ds/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-browser:
+    name: Build Milestone 1B browser
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify host and 3DS toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${DEVKITPRO:-}"
+          test -n "${DEVKITARM:-}"
+          command -v cc
+          command -v python3
+          command -v arm-none-eabi-gcc
+          command -v arm-none-eabi-size
+          command -v 3dsxtool
+          test -d "${DEVKITPRO}/libctru/include"
+          test -d "${DEVKITPRO}/libctru/lib"
+
+      - name: Validate build scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/build-browser-3ds.sh
+          sh -n scripts/fetch-links.sh
+
+      - name: Build full Links browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build-browser-3ds.sh scripts/fetch-links.sh
+          scripts/build-browser-3ds.sh 2>&1 | tee browser-build.log
+
+      - name: Verify browser outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s build/browser-3ds/links-3ds-browser.elf
+          test -s build/browser-3ds/links-3ds-browser.3dsx
+          test -s build/browser-3ds/links-objects.txt
+          test -s build/browser-3ds/size-report.txt
+          test -s build/browser-3ds/SHA256SUMS.txt
+          cat build/browser-3ds/size-report.txt
+          cat build/browser-3ds/SHA256SUMS.txt
+
+      - name: Upload browser build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: links-3ds-milestone-1b-browser
+          path: |
+            browser-build.log
+            build/browser-3ds/links-objects.txt
+            build/browser-3ds/logs/
+            build/browser-3ds/*.map
+            build/browser-3ds/*.elf
+            build/browser-3ds/*.3dsx
+            build/browser-3ds/size-report.txt
+            build/browser-3ds/SHA256SUMS.txt
+          if-no-files-found: warn
+          retention-days: 30
