@@ -1,0 +1,57 @@
+name: Build 3DSX
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-probe:
+    name: Build Milestone 0 probe
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${DEVKITPRO:-}"
+          test -n "${DEVKITARM:-}"
+          test -f "${DEVKITARM}/3ds_rules"
+          arm-none-eabi-gcc --version
+
+      - name: Validate helper scripts
+        shell: bash
+        run: sh -n scripts/fetch-links.sh
+
+      - name: Build hardware probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          make clean
+          make -j2
+          test -s links-3ds.3dsx
+          file links-3ds.3dsx || true
+          sha256sum links-3ds.3dsx > links-3ds.3dsx.sha256
+
+      - name: Upload hardware probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: links-3ds-milestone-0
+          path: |
+            links-3ds.3dsx
+            links-3ds.3dsx.sha256
+          if-no-files-found: error
+          retention-days: 30
