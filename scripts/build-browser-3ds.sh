@@ -24,9 +24,6 @@ grep -q 'links_3ds_platform_stop_input_timer()' "${ROOT_DIR}/src-3ds/graphics_3d
 
 cd "${UPSTREAM_DIR}"
 
-# Configure natively so feature tests can execute. Keep the first full-port
-# milestone deliberately small by disabling optional rendering and crypto
-# libraries when the corresponding configure switches are available.
 CONFIGURE_ARGS=(
     --build=x86_64-pc-linux-gnu
     --host=x86_64-pc-linux-gnu
@@ -54,8 +51,6 @@ env CC=cc CFLAGS=-O2 ./configure "${CONFIGURE_ARGS[@]}" \
 test -s cfg.h
 test -s Makefile
 
-# Register the staged driver only in the fetched working copy. The repository
-# remains a clean patch layer over the pinned upstream release.
 python3 - "${UPSTREAM_DIR}/drivers.c" <<'PY'
 from pathlib import Path
 import re
@@ -80,23 +75,25 @@ if "&links_3ds_driver" not in source[array.end():]:
 path.write_text(source, encoding="utf-8")
 PY
 
-# Ask the generated Makefile for its configured object manifest. Links 2.30
-# keeps sources at the archive root, so object names map directly to .c files.
+# Ask GNU make to expand the generated automake variable. Links 2.30 defines
+# OBJECTS as a reference to links_OBJECTS, so printing the wrapper literally
+# yields $(links_OBJECTS) instead of the configured object filenames.
 cat > "${BUILD_DIR}/print-objs.mk" <<EOF
 include ${UPSTREAM_DIR}/Makefile
 .PHONY: print-objs
 print-objs:
-	@printf '%s\n' "\$(OBJS)"
+	@printf '%s\n' "\$(strip \$(if \$(links_OBJECTS),\$(links_OBJECTS),\$(OBJECTS)))"
 EOF
 
 make -s -f "${BUILD_DIR}/print-objs.mk" print-objs \
     | tr ' ' '\n' \
     | sed '/^$/d' \
+    | grep '\.o$' \
     | sort -u >"${MANIFEST}"
 
-if ! grep -q '\.o$' "${MANIFEST}"; then
-    echo "Generated Makefile did not expose an OBJS manifest" >&2
-    grep -nE '(^|[[:space:]])(OBJS|OBJECTS)[[:space:]]*=' Makefile >&2 || true
+if [[ ! -s "${MANIFEST}" ]]; then
+    echo "Generated Makefile did not expose an expanded object manifest" >&2
+    grep -nE '(^|[[:space:]])(links_OBJECTS|OBJS|OBJECTS)[[:space:]]*=' Makefile >&2 || true
     exit 1
 fi
 
