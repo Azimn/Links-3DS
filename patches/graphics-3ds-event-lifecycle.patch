@@ -1,0 +1,31 @@
+diff --git a/src-3ds/graphics_3ds.c b/src-3ds/graphics_3ds.c
+--- a/src-3ds/graphics_3ds.c
++++ b/src-3ds/graphics_3ds.c
+@@ -1,6 +1,7 @@
+ #include "links.h"
+ 
+ #include "../source/gfx_3ds.h"
++#include "../platform/links_3ds/links_3ds_platform.h"
+ 
+ #include <stddef.h>
+ #include <stdint.h>
+@@ -72,6 +73,9 @@ static struct graphics_device *links_3ds_init_device(void)
+                  dev->clip.x2,
+                  dev->clip.y2);
+ 
++    links_3ds_event_bridge_attach(dev);
++    links_3ds_platform_start_input_timer();
++
+     return dev;
+ }
+ 
+@@ -83,6 +87,9 @@ static void links_3ds_shutdown_device(struct graphics_device *dev)
+         return;
+     }
+ 
++    links_3ds_platform_stop_input_timer();
++    links_3ds_event_bridge_detach(dev);
++
+     private_data = links_3ds_private(dev);
+     if (private_data != NULL) {
+         gfx_surface_destroy(private_data->surface);
