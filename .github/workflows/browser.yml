@@ -12,6 +12,7 @@ on:
       - 'source/**'
       - 'src-3ds/**'
       - 'platform/links_3ds/**'
+      - 'docs/MILESTONE_1B_RUNTIME_TEST.md'
   pull_request:
     branches:
       - main
@@ -23,6 +24,7 @@ on:
       - 'source/**'
       - 'src-3ds/**'
       - 'platform/links_3ds/**'
+      - 'docs/MILESTONE_1B_RUNTIME_TEST.md'
   workflow_dispatch:
 
 permissions:
@@ -59,8 +61,6 @@ jobs:
           command -v arm-none-eabi-gcc
           command -v arm-none-eabi-size
           command -v 3dsxtool
-          cc --version
-          arm-none-eabi-gcc --version
           test -d "${DEVKITPRO}/libctru/include"
           test -d "${DEVKITPRO}/libctru/lib"
 
@@ -100,6 +100,17 @@ jobs:
           cat build/browser-3ds/size-report.txt
           cat build/browser-3ds/SHA256SUMS.txt
 
+      - name: Package Homebrew Launcher test layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          PACKAGE_ROOT="build/browser-3ds/package/3ds/links-3ds"
+          mkdir -p "${PACKAGE_ROOT}"
+          cp build/browser-3ds/links-3ds-browser.3dsx "${PACKAGE_ROOT}/"
+          cp docs/MILESTONE_1B_RUNTIME_TEST.md "${PACKAGE_ROOT}/README.md"
+          cp build/browser-3ds/SHA256SUMS.txt "${PACKAGE_ROOT}/"
+          test -s "${PACKAGE_ROOT}/links-3ds-browser.3dsx"
+
       - name: Upload browser build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -114,5 +125,6 @@ jobs:
             build/browser-3ds/*.3dsx
             build/browser-3ds/size-report.txt
             build/browser-3ds/SHA256SUMS.txt
+            build/browser-3ds/package/
           if-no-files-found: warn
           retention-days: 30
