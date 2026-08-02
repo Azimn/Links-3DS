@@ -4,53 +4,38 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "gfx_3ds.h"
+
 #define TOP_WIDTH 400
 #define TOP_HEIGHT 240
 
-static inline uint8_t expand5(uint16_t value)
+static int clamp_int(int value, int minimum, int maximum)
 {
-    return (uint8_t)((value << 3) | (value >> 2));
-}
-
-static inline uint8_t expand6(uint16_t value)
-{
-    return (uint8_t)((value << 2) | (value >> 4));
-}
-
-static inline uint16_t rgb565(uint8_t red, uint8_t green, uint8_t blue)
-{
-    return (uint16_t)(((uint16_t)(red >> 3) << 11) |
-                      ((uint16_t)(green >> 2) << 5) |
-                      ((uint16_t)(blue >> 3)));
-}
-
-static void put_top_pixel(uint8_t *framebuffer, int x, int y, uint16_t pixel)
-{
-    size_t offset;
-
-    if (framebuffer == NULL || x < 0 || x >= TOP_WIDTH ||
-        y < 0 || y >= TOP_HEIGHT) {
-        return;
+    if (value < minimum) {
+        return minimum;
     }
-
-    /*
-     * libctru exposes the top framebuffer as a 240 by 400 BGR8 surface.
-     * The LCD appears rotated relative to the linear memory layout.
-     */
-    offset = ((size_t)x * TOP_HEIGHT + (size_t)(TOP_HEIGHT - 1 - y)) * 3u;
-
-    framebuffer[offset + 0] = expand5(pixel & 0x1fu);
-    framebuffer[offset + 1] = expand6((pixel >> 5) & 0x3fu);
-    framebuffer[offset + 2] = expand5((pixel >> 11) & 0x1fu);
+    if (value > maximum) {
+        return maximum;
+    }
+    return value;
 }
 
-static void fill_test_pattern(uint8_t *framebuffer, bool alternate)
+static void fill_test_pattern(gfx_surface_t *surface, bool alternate)
 {
+    uint16_t *pixels;
+    int stride_pixels;
     int x;
     int y;
 
-    for (y = 0; y < TOP_HEIGHT; ++y) {
-        for (x = 0; x < TOP_WIDTH; ++x) {
+    pixels = gfx_surface_lock(surface);
+    if (pixels == NULL) {
+        return;
+    }
+
+    stride_pixels = gfx_surface_stride_bytes(surface) / (int)sizeof(uint16_t);
+
+    for (y = 0; y < gfx_surface_height(surface); ++y) {
+        for (x = 0; x < gfx_surface_width(surface); ++x) {
             uint8_t red;
             uint8_t green;
             uint8_t blue;
@@ -65,41 +50,29 @@ static void fill_test_pattern(uint8_t *framebuffer, bool alternate)
                 blue = (uint8_t)((x * 180) / (TOP_WIDTH - 1));
             }
 
-            put_top_pixel(framebuffer, x, y, rgb565(red, green, blue));
+            pixels[(size_t)y * (size_t)stride_pixels + (size_t)x] =
+                gfx_rgb565(red, green, blue);
         }
     }
-}
 
-static void draw_cursor(uint8_t *framebuffer, int cursor_x, int cursor_y)
-{
-    int delta;
-    uint16_t white = rgb565(255, 255, 255);
-    uint16_t black = rgb565(0, 0, 0);
+    gfx_surface_unlock(surface);
 
-    for (delta = -7; delta <= 7; ++delta) {
-        put_top_pixel(framebuffer, cursor_x + delta, cursor_y, black);
-        put_top_pixel(framebuffer, cursor_x, cursor_y + delta, black);
-    }
-
-    for (delta = -5; delta <= 5; ++delta) {
-        put_top_pixel(framebuffer, cursor_x + delta, cursor_y, white);
-        put_top_pixel(framebuffer, cursor_x, cursor_y + delta, white);
-    }
-}
-
-static int clamp_int(int value, int minimum, int maximum)
-{
-    if (value < minimum) {
-        return minimum;
-    }
-    if (value > maximum) {
-        return maximum;
-    }
-    return value;
+    gfx_set_clip(surface, 12, 12, TOP_WIDTH - 12, TOP_HEIGHT - 12);
+    gfx_draw_hline(surface, 12, TOP_WIDTH - 12, 12,
+                   gfx_rgb565(255, 255, 255));
+    gfx_draw_hline(surface, 12, TOP_WIDTH - 12, TOP_HEIGHT - 13,
+                   gfx_rgb565(255, 255, 255));
+    gfx_draw_vline(surface, 12, TOP_HEIGHT - 12, 12,
+                   gfx_rgb565(255, 255, 255));
+    gfx_draw_vline(surface, 12, TOP_HEIGHT - 12, TOP_WIDTH - 13,
+                   gfx_rgb565(255, 255, 255));
+    gfx_set_clip(surface, 0, 0, TOP_WIDTH, TOP_HEIGHT);
 }
 
 int main(int argc, char **argv)
 {
+    gfx_surface_t *surface;
+    gfx_input_t input;
     bool alternate = false;
     int cursor_x = TOP_WIDTH / 2;
     int cursor_y = TOP_HEIGHT / 2;
@@ -107,49 +80,42 @@ int main(int argc, char **argv)
     (void)argc;
     (void)argv;
 
-    gfxInit(GSP_BGR8_OES, GSP_BGR8_OES, false);
-    gfxSet3D(false);
+    if (!gfx_3ds_init()) {
+        return 1;
+    }
+
+    surface = gfx_surface_create(TOP_WIDTH, TOP_HEIGHT);
+    if (surface == NULL) {
+        gfx_3ds_exit();
+        return 1;
+    }
+
+    gfx_set_cursor_pos(cursor_x, cursor_y);
+    gfx_set_cursor_visible(true);
 
     while (aptMainLoop()) {
-        uint8_t *framebuffer;
-        uint16_t framebuffer_width;
-        uint16_t framebuffer_height;
-        circlePosition circle;
-        u32 down;
+        gfx_poll_input(&input);
 
-        hidScanInput();
-        down = hidKeysDown();
-
-        if ((down & KEY_START) != 0) {
+        if ((input.keys_down & GFX_KEY_START) != 0) {
             break;
         }
 
-        if ((down & KEY_A) != 0) {
+        if ((input.keys_down & GFX_KEY_A) != 0) {
             alternate = !alternate;
         }
 
-        hidCircleRead(&circle);
-        cursor_x = clamp_int(cursor_x + circle.dx / 24, 0, TOP_WIDTH - 1);
-        cursor_y = clamp_int(cursor_y - circle.dy / 24, 0, TOP_HEIGHT - 1);
+        cursor_x = clamp_int(cursor_x + input.cpad_dx / 24, 0,
+                             TOP_WIDTH - 1);
+        cursor_y = clamp_int(cursor_y - input.cpad_dy / 24, 0,
+                             TOP_HEIGHT - 1);
+        gfx_set_cursor_pos(cursor_x, cursor_y);
 
-        framebuffer = gfxGetFramebuffer(
-            GFX_TOP,
-            GFX_LEFT,
-            &framebuffer_width,
-            &framebuffer_height
-        );
-
-        if (framebuffer != NULL && framebuffer_width == TOP_HEIGHT &&
-            framebuffer_height == TOP_WIDTH) {
-            fill_test_pattern(framebuffer, alternate);
-            draw_cursor(framebuffer, cursor_x, cursor_y);
-        }
-
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        fill_test_pattern(surface, alternate);
+        gfx_present(surface);
     }
 
-    gfxExit();
+    gfx_set_cursor_visible(false);
+    gfx_surface_destroy(surface);
+    gfx_3ds_exit();
     return 0;
 }
