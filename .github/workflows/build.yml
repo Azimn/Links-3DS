@@ -146,15 +146,17 @@ jobs:
         working-directory: upstream/links-2.30
         run: |
           set -euo pipefail
-          ./configure \
-            --host=arm-none-eabi \
+          env \
             CC=arm-none-eabi-gcc \
             CFLAGS="-Os -march=armv6k -mtune=mpcore -mfloat-abi=hard" \
-            > configure-3ds.log 2>&1 || {
-              cat configure-3ds.log
-              test -f config.log && cat config.log
-              exit 1
-            }
+            ./configure \
+              --build=x86_64-pc-linux-gnu \
+              --host=arm-none-eabi \
+              > configure-3ds.log 2>&1 || {
+                cat configure-3ds.log
+                test -f config.log && cat config.log
+                exit 1
+              }
           test -s cfg.h
 
       - name: Compile staged 3DS graphics driver
