@@ -10,6 +10,7 @@ on:
       - 'scripts/build-cia.sh'
       - 'scripts/generate-cia-assets.py'
       - 'scripts/prepare-graphics-3ds.py'
+      - 'scripts/prepare-upstream-3ds.py'
       - 'scripts/fetch-links.sh'
       - 'cia/**'
       - 'source/**'
@@ -25,6 +26,7 @@ on:
       - 'scripts/build-cia.sh'
       - 'scripts/generate-cia-assets.py'
       - 'scripts/prepare-graphics-3ds.py'
+      - 'scripts/prepare-upstream-3ds.py'
       - 'scripts/fetch-links.sh'
       - 'cia/**'
       - 'source/**'
@@ -79,6 +81,7 @@ jobs:
           bash -n scripts/build-cia.sh
           sh -n scripts/fetch-links.sh
           python3 -m py_compile scripts/prepare-graphics-3ds.py
+          python3 -m py_compile scripts/prepare-upstream-3ds.py
           python3 -m py_compile scripts/generate-cia-assets.py
 
       - name: Prepare verified 3DS driver source
