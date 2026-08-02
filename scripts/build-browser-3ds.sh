@@ -75,9 +75,6 @@ if "&links_3ds_driver" not in source[array.end():]:
 path.write_text(source, encoding="utf-8")
 PY
 
-# Ask GNU make to expand the generated automake variable. Links 2.30 defines
-# OBJECTS as a reference to links_OBJECTS, so printing the wrapper literally
-# yields $(links_OBJECTS) instead of the configured object filenames.
 cat > "${BUILD_DIR}/print-objs.mk" <<EOF
 include ${UPSTREAM_DIR}/Makefile
 .PHONY: print-objs
@@ -123,6 +120,14 @@ COMMON_CFLAGS=(
     -I"${ROOT_DIR}/src-3ds"
 )
 
+# The native cfg.h can omit target-only POSIX declaration paths. Force the
+# newlib declaration header only for upstream Links sources so close(), read(),
+# write(), lseek(), and related file-descriptor APIs have their real prototypes.
+UPSTREAM_CFLAGS=(
+    "${COMMON_CFLAGS[@]}"
+    -include unistd.h
+)
+
 OBJECTS=()
 while IFS= read -r object; do
     base=${object%.o}
@@ -135,7 +140,7 @@ while IFS= read -r object; do
     fi
 
     mkdir -p "$(dirname -- "${output}")"
-    arm-none-eabi-gcc "${COMMON_CFLAGS[@]}" -c "${source}" -o "${output}"
+    arm-none-eabi-gcc "${UPSTREAM_CFLAGS[@]}" -c "${source}" -o "${output}"
     OBJECTS+=("${output}")
 done <"${MANIFEST}"
 
