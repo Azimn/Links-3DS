@@ -1,0 +1,2551 @@
+Links 2.30 source interface audit
+Archive SHA-256: c4631c6b5a11527cdc3cb7872fc23b7f2b25c2b021d596be410dadb40315f166
+Generated from the verified upstream archive.
+
+===== links.h: struct graphics_driver =====
+1917-};
+1918-
+1919-struct driver_param;
+1920-
+1921:struct graphics_driver {
+1922-	unsigned char *name;
+1923-	unsigned char *(*init_driver)(unsigned char *param, unsigned char *display);	/* param is get from get_driver_param and saved into configure file */
+1924-
+1925-	/* Creates new device and returns pointer to it */
+1926-	struct graphics_device *(*init_device)(void);
+1927-
+1928-	/* Destroys the device */
+1929-	void (*shutdown_device)(struct graphics_device *dev);
+1930-
+1931-	void (*shutdown_driver)(void);
+1932-
+1933-	void (*emergency_shutdown)(void);
+1934-
+1935-	void (*after_fork)(void);
+1936-
+1937-	unsigned char *(*get_driver_param)(void);	/* returns allocated string with parameter given to init_driver function */
+1938-	unsigned char *(*get_af_unix_name)(void);
+1939-
+1940-	void (*get_margin)(int *left, int *right, int *top, int *bottom);
+1941-	int (*set_margin)(int left, int right, int top, int bottom);
+1942-
+1943-	/* dest must have x and y filled in when get_empty_bitmap is called */
+1944-	int (*get_empty_bitmap)(struct bitmap *dest);
+1945-
+1946-	void (*register_bitmap)(struct bitmap *bmp);
+1947-
+1948-	void *(*prepare_strip)(struct bitmap *bmp, int top, int lines);
+1949-	void (*commit_strip)(struct bitmap *bmp, int top, int lines);
+1950-
+1951-	/* Must not touch x and y. Suitable for re-registering. */
+1952-	void (*unregister_bitmap)(struct bitmap *bmp);
+1953-	void (*draw_bitmap)(struct graphics_device *dev, struct bitmap *hndl, int x, int y);
+1954-
+1955-	/* Input into get_color has gamma 1/display_gamma.
+1956-	 * Input of 255 means exactly the largest sample the display is able to produce.
+1957-	 * Thus, if we have 3 bits for red, we will perform this code:
+1958-	 * red=((red*7)+127)/255;
+1959-	 */
+1960-	long (*get_color)(int rgb);
+1961-
+1962-	void (*fill_area)(struct graphics_device *dev, int x1, int y1, int x2, int y2, long color);
+1963-	void (*draw_hline)(struct graphics_device *dev, int left, int y, int right, long color);
+1964-	void (*draw_vline)(struct graphics_device *dev, int x, int top, int bottom, long color);
+1965-	int (*scroll)(struct graphics_device *dev, struct rect_set **set, int scx, int scy);
+1966-	 /* When scrolling, the empty spaces will have undefined contents. */
+1967-	 /* returns:
+1968-	    0 - the caller should not care about redrawing, redraw will be sent
+1969-	    1 - the caller should redraw uncovered area */
+1970-	 /* when set is not NULL rectangles in the set (uncovered area) should be redrawn */
+1971-	void (*set_clip_area)(struct graphics_device *dev);
+1972-
+1973-	void (*flush)(struct graphics_device *dev);
+1974-
+1975-	int (*block)(struct graphics_device *dev);	/* restore old videomode and disable drawing on terminal */
+1976-	int (*unblock)(struct graphics_device *dev);	/* reenable the terminal (return -1 if failed) */
+1977-
+1978-	void (*set_palette)(void);
+1979-	unsigned short *(*get_real_colors)(void);
+1980-
+1981-	void (*set_title)(struct graphics_device *dev, unsigned char *title);
+1982-		/* set window title. title is in utf-8 encoding -- you should recode it to device charset */
+1983-		/* if device doesn't support titles (svgalib, framebuffer), this should be NULL, not empty function ! */
+1984-
+1985-	int (*exec)(unsigned char *command, int flag);
+1986-		/* -if !NULL executes command on this graphics device,
+1987-		   -if NULL links uses generic (console) command executing
+1988-		    functions
+1989-		   -return value is the same as of the 'system' syscall
+1990-		   -if flag is !0, run command in separate shell
+1991-		    else run command directly
+1992-		 */
+1993-
+1994-	void (*set_clipboard_text)(unsigned char *text);
+1995-	unsigned char *(*get_clipboard_text)(void);
+1996-
+1997-	int depth; /* Data layout
+1998-		    * depth
+1999-		    *  4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+2000-		    * +---------+-+-+---------+-----+
+2001-		    * +         | | |         |     |
+2002-		    * +---------+-+-+---------+-----+
+2003-		    *
+2004-		    *  0 - 2  Number of bytes per pixel in passed bitmaps
+2005-		    *  3 - 7  Number of significant bits per pixel -- 1, 4, 8, 15, 16, 24
+2006-		    *  8      0 -- normal order, 1 -- misordered.Has the same value as vga_misordered from the VGA mode.
+2007-		    *  9      1 -- misordered (0rgb)
+2008-		    * 10 - 14 1 -- dither to the requested number of bits
+2009-		    *
+2010-		    * This number is to be used by the layer that generates images.
+2011-		    * Memory layout for 1 bytes per pixel is:
+2012-		    * 2 colors:
+2013-		    *  7 6 5 4 3 2 1 0
+2014-		    * +-------------+-+
+2015-		    * |      0      |B| B is The Bit. 0 black, 1 white
+2016-		    * +-------------+-+
+2017-		    *
+2018-		    * 16 colors:
+2019-		    *  7 6 5 4 3 2 1 0
+2020-		    * +-------+-------+
+2021-		    * |   0   | PIXEL | Pixel is 4-bit index into palette
+2022-		    * +-------+-------+
+2023-		    *
+2024-		    * 256 colors:
+2025-		    *  7 6 5 4 3 2 1 0
+2026-		    * +---------------+
+2027-		    * |  --PIXEL--    | Pixels is 8-bit index into palette
+2028-		    * +---------------+
+2029-		    */
+2030-	int x, y;	/* size of screen. only for drivers that use virtual devices */
+2031-	int flags;	/* GD_xxx flags */
+2032-	struct driver_param *param;
+2033-};
+2034-
+2035-#define GD_DONT_USE_SCROLL	1
+2036-#define GD_NEED_CODEPAGE	2
+2037-#define GD_UNICODE_KEYS		4
+2038-#define GD_ONLY_1_WINDOW	8
+2039-#define GD_NOAUTO		16
+2040-#define GD_NO_OS_SHELL		32
+2041-#define GD_NO_LIBEVENT		64
+2042-#define GD_SELECT_PALETTE	128
+2043-#define GD_SWITCH_PALETTE	256
+2044-
+2045:extern struct graphics_driver *drv;
+2046-
+2047-#define CLIP_DRAW_BITMAP				\
+2048-	if (!is_rect_valid(&dev->clip)) return;		\
+2049-	if (!bmp->x || !bmp->y) return;			\
+2050-	if (x >= dev->clip.x2) return;			\
+2051-	if (x + bmp->x <= dev->clip.x1) return;		\
+2052-	if (y >= dev->clip.y2) return;			\
+2053-	if (y + bmp->y <= dev->clip.y1) return;		\
+2054-
+2055-#define CLIP_FILL_AREA					\
+2056-	if (x1 < dev->clip.x1) x1 = dev->clip.x1;	\
+2057-	if (x2 > dev->clip.x2) x2 = dev->clip.x2;	\
+2058-	if (y1 < dev->clip.y1) y1 = dev->clip.y1;	\
+2059-	if (y2 > dev->clip.y2) y2 = dev->clip.y2;	\
+2060-	if (x1 >= x2 || y1 >= y2) return;		\
+2061-
+2062-#define CLIP_DRAW_HLINE					\
+2063-	if (y < dev->clip.y1) return;			\
+2064-	if (y >= dev->clip.y2) return;			\
+2065-	if (x1 < dev->clip.x1) x1 = dev->clip.x1;	\
+2066-	if (x2 > dev->clip.x2) x2 = dev->clip.x2;	\
+2067-	if (x1 >= x2) return;				\
+2068-
+2069-#define CLIP_DRAW_VLINE					\
+2070-	if (x < dev->clip.x1) return;			\
+2071-	if (x >= dev->clip.x2) return;			\
+2072-	if (y1 < dev->clip.y1) y1 = dev->clip.y1;	\
+2073-	if (y2 > dev->clip.y2) y2 = dev->clip.y2;	\
+2074-	if (y1 >= y2) return;				\
+2075-
+2076-void add_graphics_drivers(unsigned char **s, int *l);
+2077-unsigned char *init_graphics(unsigned char *, unsigned char *, unsigned char *);
+2078-void shutdown_graphics(void);
+2079-void update_driver_param(void);
+2080:int g_kbd_codepage(struct graphics_driver *drv);
+2081-
+2082-extern struct graphics_device **virtual_devices;
+2083-extern int n_virtual_devices;
+2084-extern struct graphics_device *current_virtual_device;
+2085-
+2086-static inline int is_rect_valid(struct rect *r)
+2087-{
+2088-	return r->x1 < r->x2 && r->y1 < r->y2;
+2089-}
+2090-int do_rects_intersect(struct rect *, struct rect *);
+2091-void intersect_rect(struct rect *, struct rect *, struct rect *);
+2092-void unite_rect(struct rect *, struct rect *, struct rect *);
+2093-
+2094-struct rect_set *init_rect_set(void);
+2095-void add_to_rect_set(struct rect_set **, struct rect *);
+2096-void exclude_rect_from_set(struct rect_set **, struct rect *);
+2097-static inline void exclude_from_set(struct rect_set **s, int x1, int y1, int x2, int y2)
+2098-{
+2099-	struct rect r;
+2100-	r.x1 = x1, r.x2 = x2, r.y1 = y1, r.y2 = y2;
+2101-	exclude_rect_from_set(s, &r);
+2102-}
+2103-
+2104-void set_clip_area(struct graphics_device *dev, struct rect *r);
+2105-int restrict_clip_area(struct graphics_device *dev, struct rect *r, int x1, int y1, int x2, int y2);
+2106-
+2107-struct rect_set *g_scroll(struct graphics_device *dev, int scx, int scy);
+2108-
+2109-#ifdef GRDRV_VIRTUAL_DEVICES
+2110:void init_virtual_devices(struct graphics_driver *, int);
+2111-struct graphics_device *init_virtual_device(void);
+2112-#define VD_NEXT		-1
+2113-void switch_virtual_device(int);
+2114-void shutdown_virtual_device(struct graphics_device *dev);
+2115-void resize_virtual_devices(int x, int y);
+2116-void shutdown_virtual_devices(void);
+2117-#endif
+2118-
+2119-#if defined(GRDRV_X) || defined(GRDRV_HAIKU)
+2120-int x_exec(unsigned char *command, int fg);
+2121-#endif
+2122-
+2123-/* dip.c */
+2124-
+2125-/* Digital Image Processing utilities
+2126- * (c) 2000 Clock <clock@atrey.karlin.mff.cuni.cz>
+2127- *
+2128- * This file is a part of Links
+2129- *
+2130- * This file does gray scaling (for prescaling fonts), color scaling (for scaling images
+2131- * where different size is defined in the HTML), two colors mixing (alpha monochromatic letter
+2132- * on a monochromatic backround and font operations.
+2133- */
+2134-
+2135-#if !SIZEOF_UNSIGNED_SHORT || SIZEOF_UNSIGNED_SHORT > 2
+2136-#define limit_16(x)	((x) >= 0xffff ? 0xffff : (x))
+2137-#define cmd_limit_16(x)	do { if ((x) >= 0xffff) (x) = 0xffff; } while (0)
+2138-#else
+2139-#define limit_16(x)	(x)
+2140-#define cmd_limit_16(x)	do { } while (0)
+2141-#endif
+2142-
+2143-#define sRGB_gamma	0.45455		/* For HTML, which runs
+2144-					 * according to sRGB standard. Number
+2145-					 * in HTML tag is linear to photons raised
+2146-					 * to this power.
+2147-					 */
+2148-
+2149-extern unsigned aspect; /* Must hold at least 20 bits */
+2150-my_uintptr_t fontcache_info(int type);
+2151-
+2152-#define G_BFU_FONT_SIZE menu_font_size
+2153-
+2154-struct letter {
+2155-	const unsigned char *begin; /* Begin in the byte stream (of PNG data) */
+2156-	int length; /* Length (in bytes) of the PNG data in the byte stream */
+2157-	int code; /* Unicode code of the character */
+2158-	short xsize; /* x size of the PNG image */
+2159-	short ysize; /* y size of the PNG image */
+2160-	struct lru_entry *color_list;
+2161-};
+2162-
+2163-struct font {
+2164-	int begin; /* Begin in the letter stream */
+2165-	int length; /* Length in the letter stream */
+2166-};
+2167-
+2168-#ifdef HAVE_FREETYPE
+2169-struct freetype_face;
+2170-#endif
+2171-
+2172-struct style {
+2173-	int refcount;
+2174-	unsigned char r0, g0, b0, r1, g1, b1;
+2175-	/* ?0 are background, ?1 foreground.
+2176-	 * These are unrounded 8-bit sRGB space
+2177-	 */
+2178-	unsigned char flags; /* FF_ flags */
+2179-	int height;
+2180-	long line_color; /* Valid only if flags includes FF_UNDERLINE or
+2181-			  * FF_STRIKE
+2182-			  */
+2183-	int mono_space; /* -1 if the font is not monospaced
+2184-			 * width of the space otherwise
+2185-			 */
+2186-	int mono_height; /* Height of the space if mono_space is >=0
+2187-			  * undefined otherwise
+2188-			  */
+2189-#ifdef HAVE_FREETYPE
+2190-	struct freetype_face *ft_face;
+2191-#endif
+2192-};
+2193-
+2194-struct font_cache_entry {
+2195-	unsigned char r0, g0, b0, r1, g1, b1;
+2196-	unsigned char flags;
+2197-	int char_number;
+2198-	int mono_space, mono_height; /* if the letter was rendered for a
+2199-	monospace font, then size of the space. Otherwise, mono_space
+2200-	is -1 and mono_height is undefined. */
+2201-#ifdef HAVE_FREETYPE
+2202-	unsigned char *font;
+2203-#endif
+2204-	struct bitmap bitmap;
+2205-};
+2206-
+2207-
+2208-struct cached_image;
+2209-
+2210-int compute_width(int ix, int iy, int required_length);
+2211-void g_print_text(struct graphics_device *device, int x, int y, struct style *style, unsigned char *text, int *width);
+2212-int g_text_width(struct style *style, unsigned char *text);
+2213-int g_char_width(struct style *style, unsigned ch);
+2214-/*unsigned char ags_8_to_8(unsigned char input, float gamma);*/
+2215-unsigned short ags_8_to_16(unsigned char input, float gamma);
+2216-unsigned char ags_16_to_8(unsigned short input, float gamma);
+2217-unsigned short ags_16_to_16(unsigned short input, float gamma);
+2218-void agx_24_to_48(unsigned short *my_restrict dest, const unsigned char *my_restrict src,
+2219-			  size_t length, float red_gamma, float green_gamma, float blue_gamma);
+2220-void make_gamma_table(struct cached_image *cimg);
+2221-void agx_24_to_48_table(unsigned short *my_restrict dest, const unsigned char *my_restrict src,
+2222-	size_t length, unsigned short *my_restrict gamma_table);
+2223-void agx_48_to_48_table(unsigned short *my_restrict dest,
+2224-		const unsigned short *my_restrict src, size_t length, unsigned short *my_restrict table);
+2225-void agx_48_to_48(unsigned short *my_restrict dest,
+2226-		const unsigned short *my_restrict src, size_t length, float red_gamma,
+2227-		float green_gamma, float blue_gamma);
+2228-void agx_and_uc_32_to_48_table(unsigned short *my_restrict dest,
+2229-		const unsigned char *my_restrict src, size_t length, unsigned short *my_restrict table,
+2230-		unsigned short rb, unsigned short gb, unsigned short bb);
+2231-void agx_and_uc_32_to_48(unsigned short *my_restrict dest,
+2232-		const unsigned char *my_restrict src, size_t length, float red_gamma,
+2233-		float green_gamma, float blue_gamma, unsigned short rb, unsigned
+2234-		short gb, unsigned short bb);
+2235-void agx_and_uc_64_to_48_table(unsigned short *my_restrict dest,
+2236-		const unsigned short *my_restrict src, size_t length, unsigned short *my_restrict gamma_table,
+2237-		unsigned short rb, unsigned short gb, unsigned short bb);
+2238-void agx_and_uc_64_to_48(unsigned short *my_restrict dest,
+2239-		const unsigned short *my_restrict src, size_t length, float red_gamma,
+2240-		float green_gamma, float blue_gamma, unsigned short rb, unsigned
+2241-		short gb, unsigned short bb);
+2242-void mix_one_color_48(unsigned short *my_restrict dest, size_t length,
+2243-		   unsigned short r, unsigned short g, unsigned short b);
+2244-void mix_one_color_24(unsigned char *my_restrict dest, size_t length,
+2245-		   unsigned char r, unsigned char g, unsigned char b);
+2246-void scale_color(unsigned short *in, size_t ix, size_t iy, unsigned short **out,
+2247-	size_t ox, size_t oy);
+2248-void update_aspect(void);
+2249-void flush_bitmaps(int flush_font, int flush_images, int redraw_all);
+2250-
+
+===== links.h: struct graphics_device =====
+1896-	int m;
+1897-	struct rect r[1];
+1898-};
+1899-
+1900:struct graphics_device {
+1901-	/* Only graphics driver is allowed to write to this */
+1902-
+1903-	struct rect size; /* Size of the window */
+1904-	/*int left, right, top, bottom;*/
+1905-	struct rect clip;
+1906-		/* right, bottom are coords of the first point that are outside the clipping area */
+1907-
+1908-	void *driver_data;
+1909-
+1910-	/* Only user is allowed to write here, driver inits to zero's */
+1911-	void *user_data;
+1912:	void (*redraw_handler)(struct graphics_device *dev, struct rect *r);
+1913:	void (*resize_handler)(struct graphics_device *dev);
+1914:	void (*keyboard_handler)(struct graphics_device *dev, int key, int flags);
+1915:	void (*mouse_handler)(struct graphics_device *dev, int x, int y, int buttons);
+1916:	void (*extra_handler)(struct graphics_device *dev, int type, unsigned char *string);
+1917-};
+1918-
+1919-struct driver_param;
+1920-
+1921-struct graphics_driver {
+1922-	unsigned char *name;
+1923-	unsigned char *(*init_driver)(unsigned char *param, unsigned char *display);	/* param is get from get_driver_param and saved into configure file */
+1924-
+1925-	/* Creates new device and returns pointer to it */
+1926:	struct graphics_device *(*init_device)(void);
+1927-
+1928-	/* Destroys the device */
+1929:	void (*shutdown_device)(struct graphics_device *dev);
+1930-
+1931-	void (*shutdown_driver)(void);
+1932-
+1933-	void (*emergency_shutdown)(void);
+1934-
+1935-	void (*after_fork)(void);
+1936-
+1937-	unsigned char *(*get_driver_param)(void);	/* returns allocated string with parameter given to init_driver function */
+1938-	unsigned char *(*get_af_unix_name)(void);
+1939-
+1940-	void (*get_margin)(int *left, int *right, int *top, int *bottom);
+1941-	int (*set_margin)(int left, int right, int top, int bottom);
+1942-
+1943-	/* dest must have x and y filled in when get_empty_bitmap is called */
+1944-	int (*get_empty_bitmap)(struct bitmap *dest);
+1945-
+1946-	void (*register_bitmap)(struct bitmap *bmp);
+1947-
+1948-	void *(*prepare_strip)(struct bitmap *bmp, int top, int lines);
+1949-	void (*commit_strip)(struct bitmap *bmp, int top, int lines);
+1950-
+1951-	/* Must not touch x and y. Suitable for re-registering. */
+1952-	void (*unregister_bitmap)(struct bitmap *bmp);
+1953:	void (*draw_bitmap)(struct graphics_device *dev, struct bitmap *hndl, int x, int y);
+1954-
+1955-	/* Input into get_color has gamma 1/display_gamma.
+1956-	 * Input of 255 means exactly the largest sample the display is able to produce.
+1957-	 * Thus, if we have 3 bits for red, we will perform this code:
+1958-	 * red=((red*7)+127)/255;
+1959-	 */
+1960-	long (*get_color)(int rgb);
+1961-
+1962:	void (*fill_area)(struct graphics_device *dev, int x1, int y1, int x2, int y2, long color);
+1963:	void (*draw_hline)(struct graphics_device *dev, int left, int y, int right, long color);
+1964:	void (*draw_vline)(struct graphics_device *dev, int x, int top, int bottom, long color);
+1965:	int (*scroll)(struct graphics_device *dev, struct rect_set **set, int scx, int scy);
+1966-	 /* When scrolling, the empty spaces will have undefined contents. */
+1967-	 /* returns:
+1968-	    0 - the caller should not care about redrawing, redraw will be sent
+1969-	    1 - the caller should redraw uncovered area */
+1970-	 /* when set is not NULL rectangles in the set (uncovered area) should be redrawn */
+1971:	void (*set_clip_area)(struct graphics_device *dev);
+1972-
+1973:	void (*flush)(struct graphics_device *dev);
+1974-
+1975:	int (*block)(struct graphics_device *dev);	/* restore old videomode and disable drawing on terminal */
+1976:	int (*unblock)(struct graphics_device *dev);	/* reenable the terminal (return -1 if failed) */
+1977-
+1978-	void (*set_palette)(void);
+1979-	unsigned short *(*get_real_colors)(void);
+1980-
+1981:	void (*set_title)(struct graphics_device *dev, unsigned char *title);
+1982-		/* set window title. title is in utf-8 encoding -- you should recode it to device charset */
+1983-		/* if device doesn't support titles (svgalib, framebuffer), this should be NULL, not empty function ! */
+1984-
+1985-	int (*exec)(unsigned char *command, int flag);
+1986-		/* -if !NULL executes command on this graphics device,
+1987-		   -if NULL links uses generic (console) command executing
+1988-		    functions
+1989-		   -return value is the same as of the 'system' syscall
+1990-		   -if flag is !0, run command in separate shell
+1991-		    else run command directly
+1992-		 */
+1993-
+1994-	void (*set_clipboard_text)(unsigned char *text);
+1995-	unsigned char *(*get_clipboard_text)(void);
+1996-
+1997-	int depth; /* Data layout
+1998-		    * depth
+1999-		    *  4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+2000-		    * +---------+-+-+---------+-----+
+2001-		    * +         | | |         |     |
+2002-		    * +---------+-+-+---------+-----+
+2003-		    *
+2004-		    *  0 - 2  Number of bytes per pixel in passed bitmaps
+2005-		    *  3 - 7  Number of significant bits per pixel -- 1, 4, 8, 15, 16, 24
+2006-		    *  8      0 -- normal order, 1 -- misordered.Has the same value as vga_misordered from the VGA mode.
+2007-		    *  9      1 -- misordered (0rgb)
+2008-		    * 10 - 14 1 -- dither to the requested number of bits
+2009-		    *
+2010-		    * This number is to be used by the layer that generates images.
+2011-		    * Memory layout for 1 bytes per pixel is:
+2012-		    * 2 colors:
+2013-		    *  7 6 5 4 3 2 1 0
+2014-		    * +-------------+-+
+2015-		    * |      0      |B| B is The Bit. 0 black, 1 white
+2016-		    * +-------------+-+
+2017-		    *
+2018-		    * 16 colors:
+2019-		    *  7 6 5 4 3 2 1 0
+2020-		    * +-------+-------+
+2021-		    * |   0   | PIXEL | Pixel is 4-bit index into palette
+2022-		    * +-------+-------+
+2023-		    *
+2024-		    * 256 colors:
+2025-		    *  7 6 5 4 3 2 1 0
+2026-		    * +---------------+
+2027-		    * |  --PIXEL--    | Pixels is 8-bit index into palette
+2028-		    * +---------------+
+2029-		    */
+2030-	int x, y;	/* size of screen. only for drivers that use virtual devices */
+2031-	int flags;	/* GD_xxx flags */
+2032-	struct driver_param *param;
+2033-};
+2034-
+2035-#define GD_DONT_USE_SCROLL	1
+2036-#define GD_NEED_CODEPAGE	2
+2037-#define GD_UNICODE_KEYS		4
+2038-#define GD_ONLY_1_WINDOW	8
+2039-#define GD_NOAUTO		16
+2040-#define GD_NO_OS_SHELL		32
+2041-#define GD_NO_LIBEVENT		64
+2042-#define GD_SELECT_PALETTE	128
+2043-#define GD_SWITCH_PALETTE	256
+2044-
+2045-extern struct graphics_driver *drv;
+2046-
+2047-#define CLIP_DRAW_BITMAP				\
+2048-	if (!is_rect_valid(&dev->clip)) return;		\
+2049-	if (!bmp->x || !bmp->y) return;			\
+2050-	if (x >= dev->clip.x2) return;			\
+2051-	if (x + bmp->x <= dev->clip.x1) return;		\
+2052-	if (y >= dev->clip.y2) return;			\
+2053-	if (y + bmp->y <= dev->clip.y1) return;		\
+2054-
+2055-#define CLIP_FILL_AREA					\
+2056-	if (x1 < dev->clip.x1) x1 = dev->clip.x1;	\
+2057-	if (x2 > dev->clip.x2) x2 = dev->clip.x2;	\
+2058-	if (y1 < dev->clip.y1) y1 = dev->clip.y1;	\
+2059-	if (y2 > dev->clip.y2) y2 = dev->clip.y2;	\
+2060-	if (x1 >= x2 || y1 >= y2) return;		\
+2061-
+2062-#define CLIP_DRAW_HLINE					\
+2063-	if (y < dev->clip.y1) return;			\
+2064-	if (y >= dev->clip.y2) return;			\
+2065-	if (x1 < dev->clip.x1) x1 = dev->clip.x1;	\
+2066-	if (x2 > dev->clip.x2) x2 = dev->clip.x2;	\
+2067-	if (x1 >= x2) return;				\
+2068-
+2069-#define CLIP_DRAW_VLINE					\
+2070-	if (x < dev->clip.x1) return;			\
+2071-	if (x >= dev->clip.x2) return;			\
+2072-	if (y1 < dev->clip.y1) y1 = dev->clip.y1;	\
+2073-	if (y2 > dev->clip.y2) y2 = dev->clip.y2;	\
+2074-	if (y1 >= y2) return;				\
+2075-
+2076-void add_graphics_drivers(unsigned char **s, int *l);
+2077-unsigned char *init_graphics(unsigned char *, unsigned char *, unsigned char *);
+2078-void shutdown_graphics(void);
+2079-void update_driver_param(void);
+2080-int g_kbd_codepage(struct graphics_driver *drv);
+2081-
+2082:extern struct graphics_device **virtual_devices;
+2083-extern int n_virtual_devices;
+2084:extern struct graphics_device *current_virtual_device;
+2085-
+2086-static inline int is_rect_valid(struct rect *r)
+2087-{
+2088-	return r->x1 < r->x2 && r->y1 < r->y2;
+2089-}
+2090-int do_rects_intersect(struct rect *, struct rect *);
+2091-void intersect_rect(struct rect *, struct rect *, struct rect *);
+2092-void unite_rect(struct rect *, struct rect *, struct rect *);
+2093-
+2094-struct rect_set *init_rect_set(void);
+2095-void add_to_rect_set(struct rect_set **, struct rect *);
+2096-void exclude_rect_from_set(struct rect_set **, struct rect *);
+2097-static inline void exclude_from_set(struct rect_set **s, int x1, int y1, int x2, int y2)
+2098-{
+2099-	struct rect r;
+2100-	r.x1 = x1, r.x2 = x2, r.y1 = y1, r.y2 = y2;
+2101-	exclude_rect_from_set(s, &r);
+2102-}
+2103-
+2104:void set_clip_area(struct graphics_device *dev, struct rect *r);
+2105:int restrict_clip_area(struct graphics_device *dev, struct rect *r, int x1, int y1, int x2, int y2);
+2106-
+2107:struct rect_set *g_scroll(struct graphics_device *dev, int scx, int scy);
+2108-
+2109-#ifdef GRDRV_VIRTUAL_DEVICES
+2110-void init_virtual_devices(struct graphics_driver *, int);
+2111:struct graphics_device *init_virtual_device(void);
+2112-#define VD_NEXT		-1
+2113-void switch_virtual_device(int);
+2114:void shutdown_virtual_device(struct graphics_device *dev);
+2115-void resize_virtual_devices(int x, int y);
+2116-void shutdown_virtual_devices(void);
+2117-#endif
+2118-
+2119-#if defined(GRDRV_X) || defined(GRDRV_HAIKU)
+2120-int x_exec(unsigned char *command, int fg);
+2121-#endif
+2122-
+2123-/* dip.c */
+2124-
+2125-/* Digital Image Processing utilities
+2126- * (c) 2000 Clock <clock@atrey.karlin.mff.cuni.cz>
+2127- *
+2128- * This file is a part of Links
+2129- *
+2130- * This file does gray scaling (for prescaling fonts), color scaling (for scaling images
+2131- * where different size is defined in the HTML), two colors mixing (alpha monochromatic letter
+2132- * on a monochromatic backround and font operations.
+2133- */
+2134-
+2135-#if !SIZEOF_UNSIGNED_SHORT || SIZEOF_UNSIGNED_SHORT > 2
+2136-#define limit_16(x)	((x) >= 0xffff ? 0xffff : (x))
+2137-#define cmd_limit_16(x)	do { if ((x) >= 0xffff) (x) = 0xffff; } while (0)
+2138-#else
+2139-#define limit_16(x)	(x)
+2140-#define cmd_limit_16(x)	do { } while (0)
+2141-#endif
+2142-
+2143-#define sRGB_gamma	0.45455		/* For HTML, which runs
+2144-					 * according to sRGB standard. Number
+2145-					 * in HTML tag is linear to photons raised
+2146-					 * to this power.
+2147-					 */
+2148-
+2149-extern unsigned aspect; /* Must hold at least 20 bits */
+2150-my_uintptr_t fontcache_info(int type);
+2151-
+2152-#define G_BFU_FONT_SIZE menu_font_size
+2153-
+2154-struct letter {
+2155-	const unsigned char *begin; /* Begin in the byte stream (of PNG data) */
+2156-	int length; /* Length (in bytes) of the PNG data in the byte stream */
+2157-	int code; /* Unicode code of the character */
+2158-	short xsize; /* x size of the PNG image */
+2159-	short ysize; /* y size of the PNG image */
+2160-	struct lru_entry *color_list;
+2161-};
+2162-
+2163-struct font {
+2164-	int begin; /* Begin in the letter stream */
+2165-	int length; /* Length in the letter stream */
+2166-};
+2167-
+2168-#ifdef HAVE_FREETYPE
+2169-struct freetype_face;
+2170-#endif
+2171-
+2172-struct style {
+2173-	int refcount;
+2174-	unsigned char r0, g0, b0, r1, g1, b1;
+2175-	/* ?0 are background, ?1 foreground.
+2176-	 * These are unrounded 8-bit sRGB space
+2177-	 */
+2178-	unsigned char flags; /* FF_ flags */
+2179-	int height;
+2180-	long line_color; /* Valid only if flags includes FF_UNDERLINE or
+2181-			  * FF_STRIKE
+2182-			  */
+2183-	int mono_space; /* -1 if the font is not monospaced
+2184-			 * width of the space otherwise
+2185-			 */
+2186-	int mono_height; /* Height of the space if mono_space is >=0
+2187-			  * undefined otherwise
+2188-			  */
+2189-#ifdef HAVE_FREETYPE
+2190-	struct freetype_face *ft_face;
+2191-#endif
+2192-};
+2193-
+2194-struct font_cache_entry {
+2195-	unsigned char r0, g0, b0, r1, g1, b1;
+2196-	unsigned char flags;
+2197-	int char_number;
+2198-	int mono_space, mono_height; /* if the letter was rendered for a
+2199-	monospace font, then size of the space. Otherwise, mono_space
+2200-	is -1 and mono_height is undefined. */
+2201-#ifdef HAVE_FREETYPE
+2202-	unsigned char *font;
+2203-#endif
+2204-	struct bitmap bitmap;
+2205-};
+2206-
+2207-
+2208-struct cached_image;
+2209-
+2210-int compute_width(int ix, int iy, int required_length);
+2211:void g_print_text(struct graphics_device *device, int x, int y, struct style *style, unsigned char *text, int *width);
+2212-int g_text_width(struct style *style, unsigned char *text);
+2213-int g_char_width(struct style *style, unsigned ch);
+2214-/*unsigned char ags_8_to_8(unsigned char input, float gamma);*/
+2215-unsigned short ags_8_to_16(unsigned char input, float gamma);
+2216-unsigned char ags_16_to_8(unsigned short input, float gamma);
+2217-unsigned short ags_16_to_16(unsigned short input, float gamma);
+2218-void agx_24_to_48(unsigned short *my_restrict dest, const unsigned char *my_restrict src,
+2219-			  size_t length, float red_gamma, float green_gamma, float blue_gamma);
+2220-void make_gamma_table(struct cached_image *cimg);
+2221-void agx_24_to_48_table(unsigned short *my_restrict dest, const unsigned char *my_restrict src,
+2222-	size_t length, unsigned short *my_restrict gamma_table);
+2223-void agx_48_to_48_table(unsigned short *my_restrict dest,
+2224-		const unsigned short *my_restrict src, size_t length, unsigned short *my_restrict table);
+2225-void agx_48_to_48(unsigned short *my_restrict dest,
+2226-		const unsigned short *my_restrict src, size_t length, float red_gamma,
+2227-		float green_gamma, float blue_gamma);
+2228-void agx_and_uc_32_to_48_table(unsigned short *my_restrict dest,
+2229-		const unsigned char *my_restrict src, size_t length, unsigned short *my_restrict table,
+2230-		unsigned short rb, unsigned short gb, unsigned short bb);
+2231-void agx_and_uc_32_to_48(unsigned short *my_restrict dest,
+2232-		const unsigned char *my_restrict src, size_t length, float red_gamma,
+2233-		float green_gamma, float blue_gamma, unsigned short rb, unsigned
+2234-		short gb, unsigned short bb);
+2235-void agx_and_uc_64_to_48_table(unsigned short *my_restrict dest,
+2236-		const unsigned short *my_restrict src, size_t length, unsigned short *my_restrict gamma_table,
+2237-		unsigned short rb, unsigned short gb, unsigned short bb);
+2238-void agx_and_uc_64_to_48(unsigned short *my_restrict dest,
+2239-		const unsigned short *my_restrict src, size_t length, float red_gamma,
+2240-		float green_gamma, float blue_gamma, unsigned short rb, unsigned
+2241-		short gb, unsigned short bb);
+2242-void mix_one_color_48(unsigned short *my_restrict dest, size_t length,
+2243-		   unsigned short r, unsigned short g, unsigned short b);
+2244-void mix_one_color_24(unsigned char *my_restrict dest, size_t length,
+2245-		   unsigned char r, unsigned char g, unsigned char b);
+2246-void scale_color(unsigned short *in, size_t ix, size_t iy, unsigned short **out,
+2247-	size_t ox, size_t oy);
+2248-void update_aspect(void);
+2249-void flush_bitmaps(int flush_font, int flush_images, int redraw_all);
+2250-
+2251-struct g_object;
+2252-
+2253-struct wrap_struct {
+2254-	struct style *style;
+2255-	unsigned char *text;
+2256-	int pos;
+2257-	int width;
+2258-	struct g_object *obj;
+2259-	struct g_object *last_wrap_obj;
+2260-	unsigned char *last_wrap;
+2261-	int force_break;
+2262-};
+2263-
+2264-int g_wrap_text(struct wrap_struct *);
+2265-
+2266-int hack_rgb(int rgb);
+2267-
+2268-#define FF_BOLD		1
+2269-#define FF_MONOSPACED	2
+2270-#define FF_ITALIC	4
+2271-#define FF_UNDERLINE	8
+2272-#define FF_STRIKE	16
+2273-
+2274-#ifndef USE_ITALIC
+2275-#define FF_SHAPES	4
+2276-#else
+2277-#define FF_SHAPES	8
+2278-#endif
+2279-
+2280-struct style *g_get_style_font(int fg, int bg, int size, int fflags, unsigned char *font);
+2281-struct style *g_get_style(int fg, int bg, int size, int fflags);
+2282-struct style *g_invert_style(struct style *);
+2283-void g_free_style(struct style *style0);
+2284-struct style *g_clone_style(struct style *);
+2285-
+2286-extern tcount gamma_stamp;
+2287-
+2288-extern long gamma_cache_color_1;
+2289-extern int gamma_cache_rgb_1;
+2290-extern long gamma_cache_color_2;
+2291-extern int gamma_cache_rgb_2;
+2292-
+2293-long real_dip_get_color_sRGB(int rgb);
+2294-
+2295-static inline long dip_get_color_sRGB(int rgb)
+2296-{
+2297-	if (rgb == gamma_cache_rgb_1) return gamma_cache_color_1;
+2298-	if (rgb == gamma_cache_rgb_2) return gamma_cache_color_2;
+2299-	return real_dip_get_color_sRGB(rgb);
+2300-}
+2301-
+2302-void init_dip(void);
+2303-void get_links_icon(unsigned char **data, int *width, int *height, ssize_t *skip, int pad);
+2304-
+2305-#ifdef PNG_USER_MEM_SUPPORTED
+2306-void *my_png_alloc(png_structp png_ptr, png_size_t size);
+2307-void my_png_free(png_structp png_ptr, void *ptr);
+2308-#endif
+2309-
+2310-/* dither.c */
+2311-
+--
+2488-	unsigned char *title;
+2489-
+2490-	int handle_to_close;
+2491-#ifdef G
+2492:	struct graphics_device *dev;
+2493-	int last_mouse_x;
+2494-	int last_mouse_y;
+2495-	int last_mouse_b;
+2496-#endif
+2497-#if defined(G) || defined(ENABLE_UTF8)
+2498-	unsigned char utf8_buffer[7];
+2499-	int utf8_paste_mode;
+2500-#endif
+2501-	list_entry_last
+2502-};
+2503-
+2504-struct term_spec {
+2505-	list_entry_1st
+2506-	unsigned char term[MAX_TERM_LEN];
+2507-	int mode;
+2508-	int m11_hack;
+2509-	int restrict_852;
+2510-	int block_cursor;
+2511-	int col;
+2512-	int braille;
+2513-	int character_set;
+2514-	int left_margin;
+2515-	int right_margin;
+2516-	int top_margin;
+2517-	int bottom_margin;
+2518-	list_entry_last
+2519-};
+2520-
+2521-#define TERM_DUMB	0
+2522-#define TERM_VT100	1
+2523-#define TERM_LINUX	2
+2524-#define TERM_KOI8	3
+2525-#define TERM_FREEBSD	4
+2526-#define TERM_UTF8	5
+2527-
+2528-#define ATTR_FRAME	0x80
+2529-
+2530-extern struct list_head term_specs;
+2531-extern struct list_head terminals;
+2532-
+2533-static inline int term_charset(struct terminal *term)
+2534-{
+2535-	if (term->spec->character_set >= 0)
+2536-		return term->spec->character_set;
+2537-	return term->default_character_set;
+2538-}
+2539-
+2540-int hard_write(int, const unsigned char *, int);
+2541-int hard_read(int, unsigned char *, int);
+2542-unsigned char *get_cwd(void);
+2543-void set_cwd(unsigned char *);
+2544-unsigned char get_attribute(int, int);
+2545-struct terminal *init_term(int, int, void (*)(struct window *, struct links_event *, int));
+2546-#ifdef G
+2547-struct terminal *init_gfx_term(void (*)(struct window *, struct links_event *, int), unsigned char *, void *, int);
+2548-#endif
+2549-struct term_spec *new_term_spec(unsigned char *);
+2550-void free_term_specs(void);
+2551-void destroy_terminal(void *);
+2552-void cls_redraw_all_terminals(void);
+2553-void redraw_below_window(struct window *);
+2554-void add_window(struct terminal *, void (*)(struct window *, struct links_event *, int), void *);
+2555-void delete_window(struct window *);
+2556-void delete_window_ev(struct window *, struct links_event *ev);
+2557-void set_window_ptr(struct window *, int, int);
+2558-void get_parent_ptr(struct window *, int *, int *);
+2559-void add_empty_window(struct terminal *, void (*)(void *), void *);
+2560-void draw_to_window(struct window *, void (*)(struct terminal *, void *), void *);
+2561-void redraw_window(struct window *);
+2562-void redraw_all_terminals(void);
+2563-void flush_terminal(struct terminal *);
+2564-
+2565-#ifdef G
+2566-
+2567-void set_window_pos(struct window *, int, int, int, int);
+2568:void t_redraw(struct graphics_device *, struct rect *);
+2569-
+2570-#endif
+2571-
+2572-/* text only */
+2573-void set_char(struct terminal *, int, int, unsigned, unsigned char);
+2574-const chr *get_char(struct terminal *, int, int);
+2575-void set_color(struct terminal *, int, int, unsigned char);
+2576-void set_only_char(struct terminal *, int, int, unsigned, unsigned char);
+2577-void set_line(struct terminal *, int, int, int, chr *);
+2578-void set_line_color(struct terminal *, int, int, int, unsigned char);
+2579-void fill_area(struct terminal *, int, int, int, int, unsigned, unsigned char);
+2580-void draw_frame(struct terminal *, int, int, int, int, unsigned char, int);
+2581-void print_text(struct terminal *, int, int, int, unsigned char *, unsigned char);
+2582-void set_cursor(struct terminal *, int, int, int, int);
+2583-
+2584-void destroy_all_terminals(void);
+2585-void block_itrm(int);
+2586-int unblock_itrm(int);
+2587-void exec_thread(void *, int);
+2588-void close_handle(void *);
+2589-
+2590-#define TERM_FN_TITLE	1
+2591-#define TERM_FN_RESIZE	2
+2592-
+2593-#ifdef G
+2594-int have_extra_exec(void);
+2595-#endif
+2596-void exec_on_terminal(struct terminal *, unsigned char *, unsigned char *, unsigned char);
+2597-void do_terminal_function(struct terminal *, unsigned char, unsigned char *);
+2598-void set_terminal_title(struct terminal *, unsigned char *);
+2599-struct terminal *find_terminal(tcount count);
+2600-
+2601-/* language.c */
+2602-
+2603-#include "language.h"
+2604-
+2605-extern unsigned char dummyarray[];
+2606-
+2607-extern int current_language;
+2608-
+2609-void init_trans(void);
+2610-void shutdown_trans(void);
+2611-#if defined(OS2) || defined(DOS)
+2612-int get_country_language(int c);
+2613-#endif
+2614-int get_language_from_lang(unsigned char *);
+2615-int get_default_language(void);
+2616-int get_current_language(void);
+2617-int get_default_charset(void);
+2618-int get_commandline_charset(void);
+2619-unsigned char *get_text_translation(unsigned char *, struct terminal *term);
+2620-unsigned char *get_english_translation(unsigned char *);
+2621-int n_languages(void);
+2622-unsigned char *language_name(int);
+2623-void set_language(int);
+2624-unsigned char *strerror_alloc(int err, struct terminal *term);
+2625-
+2626-#define TEXT_(x) (dummyarray + x) /* TEXT causes name clash on windows */
+2627-
+2628-/* dos.c */
+2629-
+2630-#ifdef DOS
+2631-void dos_poll_break(void);
+2632-void dos_mouse_terminate(void);
+2633-void dos_save_screen(void);
+2634-void dos_restore_screen(void);
+2635-int dos_is_bw(void);
+2636-#else
+2637-#define dos_poll_break()	do { } while (0)
+2638-#endif
+2639-
+2640-/* grx.c */
+2641-
+2642-#ifdef GRDRV_GRX
+2643-extern int grx_mouse_initialized;
+2644-void grx_mouse_poll(void);
+2645-int grx_mouse_event(void);
+2646-#endif
+2647-
+2648-/* af_unix.c */
+2649-
+2650-extern int s_unix_fd;
+2651-int bind_to_af_unix(unsigned char *name);
+2652-void af_unix_close(void);
+2653-
+2654-/* main.c */
+2655-
+2656-extern int terminal_pipe[2];
+2657-
+2658-extern int retval;
+2659-
+2660-extern unsigned char *path_to_exe;
+2661-extern char **g_argv;
+2662-extern int g_argc;
+2663-
+2664-void sig_tstp(void *t);
+2665-void sig_cont(void *t);
+2666-
+2667-void unhandle_terminal_signals(struct terminal *term);
+2668-int attach_terminal(int, int, int, void *, int);
+--
+4512-
+4513-
+4514-int g_forward_mouse(struct f_data_c *fd, struct g_object *a, int x, int y, int b);
+4515-
+4516:void draw_vscroll_bar(struct graphics_device *dev, int x, int y, int yw, int total, int view, int pos);
+4517:void draw_hscroll_bar(struct graphics_device *dev, int x, int y, int xw, int total, int view, int pos);
+4518-void get_scrollbar_pos(int dsize, int total, int vsize, int vpos, int *start, int *end);
+4519-
+4520-
+4521-void get_parents(struct f_data *f, struct g_object *a);
+4522-
+4523-void g_dummy_mouse(struct f_data_c *, struct g_object *, int, int, int);
+4524-void g_text_mouse(struct f_data_c *, struct g_object *, int, int, int);
+4525-void g_line_mouse(struct f_data_c *, struct g_object *, int, int, int);
+4526-void g_area_mouse(struct f_data_c *, struct g_object *, int, int, int);
+4527-
+4528-void g_dummy_draw(struct f_data_c *, struct g_object *, int, int);
+4529-void g_text_draw(struct f_data_c *, struct g_object *, int, int);
+4530-void g_line_draw(struct f_data_c *, struct g_object *, int, int);
+4531-void g_area_draw(struct f_data_c *, struct g_object *, int, int);
+4532-
+4533-void g_tag_destruct(struct g_object *);
+4534-void g_text_destruct(struct g_object *);
+4535-void g_line_destruct(struct g_object *);
+4536-void g_line_bg_destruct(struct g_object *);
+4537-void g_area_destruct(struct g_object *);
+4538-
+4539-void g_line_get_list(struct g_object *, void (*)(struct g_object *parent, struct g_object *child));
+4540-void g_area_get_list(struct g_object *, void (*)(struct g_object *parent, struct g_object *child));
+4541-
+4542-void draw_one_object(struct f_data_c *fd, struct g_object *o);
+4543-void draw_title(struct f_data_c *f);
+4544-void draw_graphical_doc(struct terminal *t, struct f_data_c *scr, int active);
+4545-int g_next_link(struct f_data_c *fd, int dir, int do_scroll);
+4546-int g_frame_ev(struct session *ses, struct f_data_c *fd, struct links_event *ev);
+4547-void g_find_next(struct f_data_c *f, int);
+4548-
+4549-int is_link_in_view(struct f_data_c *fd, int nl);
+4550-
+4551-void init_grview(void);
+4552-
+4553-#endif
+4554-
+4555-/* html.c */
+4556-
+4557-#define AT_BOLD		1
+4558-#define AT_ITALIC	2
+4559-#define AT_UNDERLINE	4
+4560-#define AT_FIXED	8
+4561-#define AT_GRAPHICS	16
+4562-#define AT_INVERT	32
+4563-#define AT_STRIKE	64
+4564-
+4565-#define AL_LEFT		0
+4566-#define AL_CENTER	1
+4567-#define AL_RIGHT	2
+4568-#define AL_BLOCK	3
+4569-#define AL_NO		4
+4570-#define AL_NO_BREAKABLE	5
+4571-#define AL_BOTTOM	6
+4572-#define AL_MIDDLE	7
+4573-#define AL_TOP		8
+4574-
+4575-#define AL_MASK		0x1f
+4576-
+4577-#define AL_NOBRLEXP	0x20
+4578-#define AL_MONO		0x40
+4579-
+4580-struct text_attrib_beginning {
+4581-	int attr;
+4582-	struct rgb fg;
+4583-	struct rgb bg;
+4584-	int fontsize;
+4585-	int baseline;
+4586-};
+4587-
+4588-struct text_attrib {
+4589-	int attr;
+4590-	struct rgb fg;
+4591-	struct rgb bg;
+4592-	int fontsize;
+4593-	int baseline;
+4594-	unsigned char *fontface;
+4595-	unsigned char *link;
+4596-	unsigned char *target;
+4597-	unsigned char *image;
+4598-	struct js_event_spec *js_event;
+4599-	struct form_control *form;
+4600-	struct rgb clink;
+4601-	unsigned char *href_base;
+4602-	unsigned char *target_base;
+4603-	unsigned char *select;
+4604-	int select_disabled;
+4605-};
+4606-
+4607-#define P_NUMBER	1
+4608-#define P_alpha		2
+4609-#define P_ALPHA		3
+4610-#define P_roman		4
+4611-#define P_ROMAN		5
+4612-#define P_STAR		1
+4613-#define P_O		2
+4614-#define P_PLUS		3
+4615-#define P_LISTMASK	7
+4616-#define P_COMPACT	8
+4617-
+--
+4854-int is_in_area(struct map_area *a, int x, int y);
+4855-
+4856-struct background *g_get_background(unsigned char *bg, unsigned char *bgcolor);
+4857-void g_release_background(struct background *bg);
+4858:void g_draw_background(struct graphics_device *dev, struct background *bg, int x, int y, int xw, int yw);
+4859-
+4860-void g_x_extend_area(struct g_object_area *a, int width, int height, int align);
+4861-struct g_part *g_format_html_part(unsigned char *, unsigned char *, int, int, int, unsigned char *, int, unsigned char *, unsigned char *, struct f_data *);
+4862-void g_release_part(struct g_part *);
+4863-int g_get_area_width(struct g_object_area *o);
+4864-void add_object(struct g_part *pp, struct g_object *o);
+4865-void add_object_to_line(struct g_part *pp, struct g_object_line **lp,
+4866-	struct g_object *go);
+4867-void flush_pending_text_to_line(struct g_part *p);
+4868-void flush_pending_line_to_obj(struct g_part *p, int minheight);
+4869-
+4870-#endif
+4871-
+4872-/* html_tbl.c */
+4873-
+4874-unsigned char *skip_element(unsigned char *, unsigned char *, unsigned char *, int);
+4875-void format_table(unsigned char *, unsigned char *, unsigned char *, unsigned char **, void *);
+4876-void table_bg(struct text_attrib *ta, unsigned char bgstr[8]);
+4877-
+4878-void *find_table_cache_entry(unsigned char *start, unsigned char *end, int align, int m, int width, int xs, int link_num);
+4879-void add_table_cache_entry(unsigned char *start, unsigned char *end, int align, int m, int width, int xs, int link_num, void *p);
+4880-
+4881-/* default.c */
+4882-
+4883-extern int ggr;
+4884-extern int force_g;
+4885-extern unsigned char ggr_drv[MAX_STR_LEN];
+4886-extern unsigned char ggr_mode[MAX_STR_LEN];
+4887-extern unsigned char ggr_display[MAX_STR_LEN];
+4888-
+4889-extern unsigned char default_target[MAX_STR_LEN];
+4890-
+4891-unsigned char *parse_options(int, char *[]);
+4892-void init_home(void);
+4893-unsigned char *get_token(unsigned char **line);
+4894-void add_quoted_to_str(unsigned char **s, int *l, unsigned char *q);
+4895-unsigned char *read_config_file(unsigned char *);
+4896-void delete_config_file(unsigned char *);
+4897-int write_to_config_file(unsigned char *, unsigned char *, int);
+4898-void load_config(void);
+4899-void write_config(struct terminal *);
+4900-void write_html_config(struct terminal *);
+4901-void end_config(void);
+4902-
+4903-void load_url_history(void);
+4904-void save_url_history(void);
+4905-
+4906-struct driver_param {
+4907-	list_entry_1st
+4908-	int kbd_codepage;
+4909-	int palette_mode;
+4910-	unsigned char *param;
+4911-	unsigned char shell_term[MAX_STR_LEN];
+4912-	int nosave;
+4913-	list_entry_last
+4914-	unsigned char name[1];
+4915-};
+4916-		/* -if exec is NULL, shell_term is unused
+4917-		   -otherwise this string describes shell to be executed by the
+4918-		    exec function, the '%' char means string to be executed
+4919-		   -shell cannot be NULL
+4920-		   -if exec is !NULL and shell is empty, exec should use some
+4921-		    default shell (e.g. "xterm -e %")
+4922-		*/
+4923-
+4924-struct driver_param *get_driver_param(unsigned char *);
+4925-
+4926-extern int anonymous;
+4927-
+4928-extern unsigned char system_name[];
+4929-extern unsigned char compiler_name[];
+4930-
+4931-extern unsigned char *links_home;
+4932-extern int first_use;
+4933-
+4934-extern int disable_libevent;
+4935-extern int disable_openmp;
+4936-extern int no_connect;
+4937-extern int base_session;
+4938-#define D_DUMP		1
+4939-#define D_SOURCE	2
+4940-extern int dmp;
+4941-extern int screen_width;
+4942-extern int dump_codepage;
+4943-extern int force_html;
+4944-
+4945-extern int max_connections;
+4946-extern int max_connections_to_host;
+4947-extern int max_tries;
+4948-extern int receive_timeout;
+4949-extern int unrestartable_receive_timeout;
+4950-extern int timeout_multiple_addresses;
+4951-extern unsigned char bind_ip_address[16];
+4952-extern unsigned char bind_ipv6_address[INET6_ADDRSTRLEN];
+4953-extern int download_utime;
+4954-
+4955-extern int max_format_cache_entries;
+4956-extern int memory_cache_size;
+4957-extern int image_cache_size;
+4958-extern int font_cache_size;
+
+===== links.h: struct bitmap =====
+1879-/* Bitmap is allowed to pass only to that driver from which was obtained.
+1880- * It is forbidden to get bitmap from svga driver and pass it to X driver.
+1881- * It is impossible to get an error when registering a bitmap
+1882- */
+1883:struct bitmap {
+1884-	int x, y; /* Dimensions */
+1885-	ssize_t skip; /* Byte distance between vertically consecutive pixels */
+1886-	void *data; /* Pointer to room for topleft pixel */
+1887-	void *flags; /* Allocation flags for the driver */
+1888-};
+1889-
+1890-struct rect {
+1891-	int x1, x2, y1, y2;
+1892-};
+1893-
+1894-struct rect_set {
+1895-	int rl;
+1896-	int m;
+1897-	struct rect r[1];
+1898-};
+1899-
+1900-struct graphics_device {
+1901-	/* Only graphics driver is allowed to write to this */
+1902-
+1903-	struct rect size; /* Size of the window */
+1904-	/*int left, right, top, bottom;*/
+1905-	struct rect clip;
+1906-		/* right, bottom are coords of the first point that are outside the clipping area */
+1907-
+1908-	void *driver_data;
+1909-
+1910-	/* Only user is allowed to write here, driver inits to zero's */
+1911-	void *user_data;
+1912-	void (*redraw_handler)(struct graphics_device *dev, struct rect *r);
+1913-	void (*resize_handler)(struct graphics_device *dev);
+1914-	void (*keyboard_handler)(struct graphics_device *dev, int key, int flags);
+1915-	void (*mouse_handler)(struct graphics_device *dev, int x, int y, int buttons);
+1916-	void (*extra_handler)(struct graphics_device *dev, int type, unsigned char *string);
+1917-};
+1918-
+1919-struct driver_param;
+1920-
+1921-struct graphics_driver {
+1922-	unsigned char *name;
+1923-	unsigned char *(*init_driver)(unsigned char *param, unsigned char *display);	/* param is get from get_driver_param and saved into configure file */
+1924-
+1925-	/* Creates new device and returns pointer to it */
+1926-	struct graphics_device *(*init_device)(void);
+1927-
+1928-	/* Destroys the device */
+1929-	void (*shutdown_device)(struct graphics_device *dev);
+1930-
+1931-	void (*shutdown_driver)(void);
+1932-
+1933-	void (*emergency_shutdown)(void);
+1934-
+1935-	void (*after_fork)(void);
+1936-
+1937-	unsigned char *(*get_driver_param)(void);	/* returns allocated string with parameter given to init_driver function */
+1938-	unsigned char *(*get_af_unix_name)(void);
+1939-
+1940-	void (*get_margin)(int *left, int *right, int *top, int *bottom);
+1941-	int (*set_margin)(int left, int right, int top, int bottom);
+1942-
+1943-	/* dest must have x and y filled in when get_empty_bitmap is called */
+1944:	int (*get_empty_bitmap)(struct bitmap *dest);
+1945-
+1946:	void (*register_bitmap)(struct bitmap *bmp);
+1947-
+1948:	void *(*prepare_strip)(struct bitmap *bmp, int top, int lines);
+1949:	void (*commit_strip)(struct bitmap *bmp, int top, int lines);
+1950-
+1951-	/* Must not touch x and y. Suitable for re-registering. */
+1952:	void (*unregister_bitmap)(struct bitmap *bmp);
+1953:	void (*draw_bitmap)(struct graphics_device *dev, struct bitmap *hndl, int x, int y);
+1954-
+1955-	/* Input into get_color has gamma 1/display_gamma.
+1956-	 * Input of 255 means exactly the largest sample the display is able to produce.
+1957-	 * Thus, if we have 3 bits for red, we will perform this code:
+1958-	 * red=((red*7)+127)/255;
+1959-	 */
+1960-	long (*get_color)(int rgb);
+1961-
+1962-	void (*fill_area)(struct graphics_device *dev, int x1, int y1, int x2, int y2, long color);
+1963-	void (*draw_hline)(struct graphics_device *dev, int left, int y, int right, long color);
+1964-	void (*draw_vline)(struct graphics_device *dev, int x, int top, int bottom, long color);
+1965-	int (*scroll)(struct graphics_device *dev, struct rect_set **set, int scx, int scy);
+1966-	 /* When scrolling, the empty spaces will have undefined contents. */
+1967-	 /* returns:
+1968-	    0 - the caller should not care about redrawing, redraw will be sent
+1969-	    1 - the caller should redraw uncovered area */
+1970-	 /* when set is not NULL rectangles in the set (uncovered area) should be redrawn */
+1971-	void (*set_clip_area)(struct graphics_device *dev);
+1972-
+1973-	void (*flush)(struct graphics_device *dev);
+1974-
+1975-	int (*block)(struct graphics_device *dev);	/* restore old videomode and disable drawing on terminal */
+1976-	int (*unblock)(struct graphics_device *dev);	/* reenable the terminal (return -1 if failed) */
+1977-
+1978-	void (*set_palette)(void);
+1979-	unsigned short *(*get_real_colors)(void);
+1980-
+1981-	void (*set_title)(struct graphics_device *dev, unsigned char *title);
+1982-		/* set window title. title is in utf-8 encoding -- you should recode it to device charset */
+1983-		/* if device doesn't support titles (svgalib, framebuffer), this should be NULL, not empty function ! */
+1984-
+1985-	int (*exec)(unsigned char *command, int flag);
+1986-		/* -if !NULL executes command on this graphics device,
+1987-		   -if NULL links uses generic (console) command executing
+1988-		    functions
+1989-		   -return value is the same as of the 'system' syscall
+1990-		   -if flag is !0, run command in separate shell
+1991-		    else run command directly
+1992-		 */
+1993-
+1994-	void (*set_clipboard_text)(unsigned char *text);
+1995-	unsigned char *(*get_clipboard_text)(void);
+1996-
+1997-	int depth; /* Data layout
+1998-		    * depth
+1999-		    *  4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+2000-		    * +---------+-+-+---------+-----+
+2001-		    * +         | | |         |     |
+2002-		    * +---------+-+-+---------+-----+
+2003-		    *
+2004-		    *  0 - 2  Number of bytes per pixel in passed bitmaps
+2005-		    *  3 - 7  Number of significant bits per pixel -- 1, 4, 8, 15, 16, 24
+2006-		    *  8      0 -- normal order, 1 -- misordered.Has the same value as vga_misordered from the VGA mode.
+2007-		    *  9      1 -- misordered (0rgb)
+2008-		    * 10 - 14 1 -- dither to the requested number of bits
+2009-		    *
+2010-		    * This number is to be used by the layer that generates images.
+2011-		    * Memory layout for 1 bytes per pixel is:
+2012-		    * 2 colors:
+2013-		    *  7 6 5 4 3 2 1 0
+--
+2200-	is -1 and mono_height is undefined. */
+2201-#ifdef HAVE_FREETYPE
+2202-	unsigned char *font;
+2203-#endif
+2204:	struct bitmap bitmap;
+2205-};
+2206-
+2207-
+2208-struct cached_image;
+2209-
+2210-int compute_width(int ix, int iy, int required_length);
+2211-void g_print_text(struct graphics_device *device, int x, int y, struct style *style, unsigned char *text, int *width);
+2212-int g_text_width(struct style *style, unsigned char *text);
+2213-int g_char_width(struct style *style, unsigned ch);
+2214-/*unsigned char ags_8_to_8(unsigned char input, float gamma);*/
+2215-unsigned short ags_8_to_16(unsigned char input, float gamma);
+2216-unsigned char ags_16_to_8(unsigned short input, float gamma);
+2217-unsigned short ags_16_to_16(unsigned short input, float gamma);
+2218-void agx_24_to_48(unsigned short *my_restrict dest, const unsigned char *my_restrict src,
+2219-			  size_t length, float red_gamma, float green_gamma, float blue_gamma);
+2220-void make_gamma_table(struct cached_image *cimg);
+2221-void agx_24_to_48_table(unsigned short *my_restrict dest, const unsigned char *my_restrict src,
+2222-	size_t length, unsigned short *my_restrict gamma_table);
+2223-void agx_48_to_48_table(unsigned short *my_restrict dest,
+2224-		const unsigned short *my_restrict src, size_t length, unsigned short *my_restrict table);
+2225-void agx_48_to_48(unsigned short *my_restrict dest,
+2226-		const unsigned short *my_restrict src, size_t length, float red_gamma,
+2227-		float green_gamma, float blue_gamma);
+2228-void agx_and_uc_32_to_48_table(unsigned short *my_restrict dest,
+2229-		const unsigned char *my_restrict src, size_t length, unsigned short *my_restrict table,
+2230-		unsigned short rb, unsigned short gb, unsigned short bb);
+2231-void agx_and_uc_32_to_48(unsigned short *my_restrict dest,
+2232-		const unsigned char *my_restrict src, size_t length, float red_gamma,
+2233-		float green_gamma, float blue_gamma, unsigned short rb, unsigned
+2234-		short gb, unsigned short bb);
+2235-void agx_and_uc_64_to_48_table(unsigned short *my_restrict dest,
+2236-		const unsigned short *my_restrict src, size_t length, unsigned short *my_restrict gamma_table,
+2237-		unsigned short rb, unsigned short gb, unsigned short bb);
+2238-void agx_and_uc_64_to_48(unsigned short *my_restrict dest,
+2239-		const unsigned short *my_restrict src, size_t length, float red_gamma,
+2240-		float green_gamma, float blue_gamma, unsigned short rb, unsigned
+2241-		short gb, unsigned short bb);
+2242-void mix_one_color_48(unsigned short *my_restrict dest, size_t length,
+2243-		   unsigned short r, unsigned short g, unsigned short b);
+2244-void mix_one_color_24(unsigned char *my_restrict dest, size_t length,
+2245-		   unsigned char r, unsigned char g, unsigned char b);
+2246-void scale_color(unsigned short *in, size_t ix, size_t iy, unsigned short **out,
+2247-	size_t ox, size_t oy);
+2248-void update_aspect(void);
+2249-void flush_bitmaps(int flush_font, int flush_images, int redraw_all);
+2250-
+2251-struct g_object;
+2252-
+2253-struct wrap_struct {
+2254-	struct style *style;
+2255-	unsigned char *text;
+2256-	int pos;
+2257-	int width;
+2258-	struct g_object *obj;
+2259-	struct g_object *last_wrap_obj;
+2260-	unsigned char *last_wrap;
+2261-	int force_break;
+2262-};
+2263-
+2264-int g_wrap_text(struct wrap_struct *);
+--
+2311-
+2312-extern int slow_fpu;	/* -1 --- don't know, 0 --- no, 1 --- yes */
+2313-
+2314-/* Dithering functions (for blocks of pixels being dithered into bitmaps) */
+2315:void dither(unsigned short *in, struct bitmap *out);
+2316:int *dither_start(unsigned short *in, struct bitmap *out);
+2317:void dither_restart(unsigned short *in, struct bitmap *out, int *dregs);
+2318:extern void (*round_fn)(unsigned short *my_restrict in, struct bitmap *out);
+2319-
+2320-long (*get_color_fn(int depth))(int rgb);
+2321-void init_dither(int depth);
+2322-void round_color_sRGB_to_48(unsigned short *my_restrict red, unsigned short *my_restrict green,
+2323-		unsigned short *my_restrict blue, int rgb);
+2324-
+2325-void q_palette(unsigned size, unsigned color, unsigned scale, unsigned rgb[3]);
+2326-double rgb_distance(int r1, int g1, int b1, int r2, int g2, int b2);
+2327-
+2328-void free_dither(void);
+2329-
+2330-/* freetype.c */
+2331-
+2332-#ifdef HAVE_FREETYPE
+2333-
+2334-struct freetype_face *freetype_flags_to_face(int fflags);
+2335-
+2336-#define sizeof_freetype_cache	1024
+2337-extern struct lru_entry **freetype_cache;
+2338-
+2339-int freetype_load_metric_cached(struct style *st, int char_number, int *xp, int y);
+2340-int freetype_type_character(struct style *st, int char_number, unsigned char **dest, int *x, int y);
+2341-
+2342-struct freetype_face *freetype_get_font(unsigned char *path);
+2343-void freetype_free_font(struct freetype_face *face);
+2344-unsigned char *freetype_get_allocated_font_name(struct style *st);
+2345-
+2346-void freetype_reload(void);
+2347-void freetype_init(void);
+2348-void freetype_done(void);
+2349-
+2350-void add_freetype_version(unsigned char **s, int *l);
+2351-
+2352-/* fontconf.c */
+2353-
+2354-struct list_of_fonts {
+2355-	unsigned char *name;
+2356-	unsigned char *file;
+2357-};
+2358-
+2359-void fontconfig_list_fonts(struct list_of_fonts **fonts, int *n_fonts, int monospaced);
+2360-void fontconfig_free_fonts(struct list_of_fonts *fonts);
+2361-void wait_for_fontconfig(void);
+2362-void fontconfig_init(void);
+2363-
+2364-void add_fontconfig_version(unsigned char **s, int *l);
+2365-
+2366-#else
+2367-
+2368-static inline void freetype_reload(void) { }
+2369-static inline void freetype_init(void) { }
+2370-static inline void freetype_done(void) { }
+2371-
+2372-static inline void fontconfig_init(void) { }
+2373-static inline void fontconfig_done(void) { }
+2374-
+2375-#endif
+2376-
+2377-#endif
+2378-
+--
+3223-		 * i. e. 0.45455 is here if the image is in sRGB
+3224-		 * makes sense only if buffer is !=NULL
+3225-		 */
+3226-	tcount gamma_stamp; /* Number that is increased every gamma change */
+3227:	struct bitmap bmp; /* Registered bitmap. bmp.x=-1 and bmp.y=-1
+3228-			    * if the bmp is not registered.
+3229-			    */
+3230-	unsigned char bmp_used;
+3231-	int last_length; /* length of cache entry at which last decoding was
+3232-			  * done. Makes sense only if reparse==0
+3233-			  */
+3234-	tcount last_count; /* Always valid. */
+3235-	tcount last_count2; /* Always valid. */
+3236-	void *decoder;	      /* Decoder unfinished work. If NULL, decoder
+3237-			       * has finished or has not yet started.
+3238-			       */
+3239-	int rows_added; /* 1 if some rows were added inside the decoder */
+3240-	unsigned char state; /* 0...3 or 8...15 */
+3241-	unsigned char strip_optimized; /* 0 no strip optimization
+3242-				1 strip-optimized (no buffer allocated permanently
+3243-				and bitmap is always allocated)
+3244-			      */
+3245-	unsigned char eof_hit;
+3246-	int *dregs; /* Only for stip-optimized cached images */
+3247-	unsigned short *gamma_table; /* When suitable and source is 8 bits per pixel,
+3248-				      * this is allocated to 256*3*sizeof(*gamma_table)
+3249-				      * = 1536 bytes and speeds up the gamma calculations
+3250-				      * tremendously */
+3251-	list_entry_last
+3252-};
+3253-
+3254-struct additional_file;
+3255-
+3256-struct g_object_image {
+3257-#ifndef REORDER_LIST_ENTRIES
+3258-	struct g_object_text_image goti;
+3259-#endif
+3260-			  /* x,y: coordinates
+3261-			     xw, yw: width on the screen, or <0 if
+3262-			     not yet known. Already scaled. */
+3263-	/* For html parser. If xw or yw are zero, then entries
+3264-	       background_color
+3265-	       af
+3266-	       width
+3267-	       height
+3268-	       image_type
+3269-	       buffer
+3270-	       buffer_bytes_per_pixel
+3271-	       *_gamma
+3272-	       gamma_stamp
+3273-	       bmp
+3274-	       last_length
+3275-	       last_count2
+3276-	       decoder
+3277-	       rows_added
+3278-	       reparse
+3279-	are uninitialized and thus garbage
+3280-	*/
+3281-
+3282-	/* End of compatibility with g_object_text */
+3283-
+3284-	list_entry_1st
+3285-
+3286-	struct cached_image *cimg;
+3287-	struct additional_file *af;
+
+===== drivers.c: graphics_drivers =====
+46- * On other systems you must test first X and then svgalib (because svgalib
+47- *	would work in X too and it's undesirable).
+48- */
+49-
+50:static struct graphics_driver *graphics_drivers[] = {
+51-#ifdef GRDRV_PMSHELL
+52-	&pmshell_driver,
+53-#endif
+54-#ifdef GRDRV_ATHEOS
+55-	&atheos_driver,
+56-#endif
+57-#ifdef GRDRV_HAIKU
+58-	&haiku_driver,
+59-#endif
+60-#ifndef SPAD
+61-#ifdef GRDRV_X
+62-	&x_driver,
+63-#endif
+64-#endif
+65-#ifdef GRDRV_FB
+66-	/* use FB before DirectFB because DirectFB has bugs */
+67-	&fb_driver,
+68-#endif
+69-#ifdef GRDRV_DIRECTFB
+70-	&directfb_driver,
+71-#endif
+72-#ifdef GRDRV_SVGALIB
+73-	&svga_driver,
+74-#endif
+75-#ifdef SPAD
+76-#ifdef GRDRV_X
+77-	&x_driver,
+78-#endif
+79-#endif
+80-#ifdef GRDRV_GRX
+81-	&grx_driver,
+82-#endif
+83-#ifdef GRDRV_SDL
+84-	&sdl_driver,
+85-#endif
+86-	NULL
+87-};
+88-
+89-#if 0
+90:static unsigned char *list_graphics_drivers(void)
+91-{
+92-	unsigned char *d = init_str();
+93-	int l = 0;
+94-	struct graphics_driver **gd;
+95:	for (gd = graphics_drivers; *gd; gd++) {
+96-		if (l) add_chr_to_str(&d, &l, ' ');
+97-		add_to_str(&d, &l, (*gd)->name);
+98-	}
+99-	return d;
+100-}
+101-#endif
+102-
+103-/* Driver je jednorazovy argument, kterej se preda grafickymu driveru, nikde se dal
+104- * neuklada.  Param se skladuje v default_driver param a uklada se do konfiguraku. Pred
+105- * ukoncenim grafickeho driveru se nastavi default_driver_param podle
+106- * drv->get_driver_param.
+107- */
+108-static unsigned char *init_graphics_driver(struct graphics_driver *gd, unsigned char *param, unsigned char *display)
+109-{
+110-	unsigned char *r;
+111-	unsigned char *p = param;
+112-	struct driver_param *dp = get_driver_param(gd->name);
+113-	if (!param || !*param) p = dp->param;
+114-	gd->param = dp;
+115-	drv = gd;
+116-	r = gd->init_driver(p,display);
+117-	if (r) drv = NULL;
+118-	else F = 1;
+119-	return r;
+120-}
+121-
+122-
+123:void add_graphics_drivers(unsigned char **s, int *l)
+124-{
+125-	struct graphics_driver **gd;
+126:	for (gd = graphics_drivers; *gd; gd++) {
+127:		if (gd != graphics_drivers) add_to_str(s, l, cast_uchar ", ");
+128-		add_to_str(s, l, (*gd)->name);
+129-	}
+130-}
+131-
+132-unsigned char *init_graphics(unsigned char *driver, unsigned char *param, unsigned char *display)
+133-{
+134-	unsigned char *s = init_str();
+135-	int l = 0;
+136-	struct graphics_driver **gd;
+137-#if defined(GRDRV_PMSHELL) && defined(GRDRV_X)
+138-	if (is_xterm()) {
+139-		static unsigned char swapped = 0;
+140-		if (!swapped) {
+141:			for (gd = graphics_drivers; *gd; gd++) {
+142-				if (*gd == &pmshell_driver) *gd = &x_driver;
+143-				else if (*gd == &x_driver) *gd = &pmshell_driver;
+144-			}
+145-			swapped = 1;
+146-		}
+147-	}
+148-#endif
+149:	for (gd = graphics_drivers; *gd; gd++) {
+150-		if (!driver || !*driver || !casestrcmp((*gd)->name, driver)) {
+151-			unsigned char *r;
+152-			if ((!driver || !*driver) && (*gd)->flags & GD_NOAUTO) continue;
+153-			if (!(r = init_graphics_driver(*gd, param, display))) {
+154-				mem_free(s);
+155-				return NULL;
+156-			}
+157-			if (!l) {
+158-				if (!driver || !*driver) add_to_str(&s, &l, cast_uchar "Could not initialize any graphics driver. Tried the following drivers:\n");
+159-				else add_to_str(&s, &l, cast_uchar "Could not initialize graphics driver ");
+160-			}
+161-			add_to_str(&s, &l, (*gd)->name);
+162-			add_to_str(&s, &l, cast_uchar ":\n");
+163-			add_to_str(&s, &l, r);
+164-			mem_free(r);
+165-		}
+166-	}
+167-	if (!l) {
+168-		add_to_str(&s, &l, cast_uchar "Unknown graphics driver ");
+169-		if (driver) add_to_str(&s, &l, driver);
+170-		add_to_str(&s, &l, cast_uchar ".\nThe following graphics drivers are supported:\n");
+171:		add_graphics_drivers(&s, &l);
+172-		add_to_str(&s, &l, cast_uchar "\n");
+173-	}
+174-	return s;
+175-}
+176-
+177-void shutdown_graphics(void)
+178-{
+179-	if (drv) {
+180-		drv->shutdown_driver();
+181-		drv = NULL;
+182-		F = 0;
+183-	}
+184-}
+185-
+186-void update_driver_param(void)
+187-{
+188-	if (drv) {
+189-		struct driver_param *dp = drv->param;
+190-		if (dp->param) mem_free(dp->param), dp->param = NULL;
+191-		if (drv->get_driver_param)
+192-			dp->param = stracpy(drv->get_driver_param());
+193-		dp->nosave = 0;
+194-	}
+195-}
+196-
+197-int g_kbd_codepage(struct graphics_driver *drv)
+198-{
+199-	if (drv->param->kbd_codepage >= 0)
+200-		return drv->param->kbd_codepage;
+201-	return get_default_charset();
+202-}
+203-
+204-int do_rects_intersect(struct rect *r1, struct rect *r2)
+205-{
+206-	return (r1->x1 > r2->x1 ? r1->x1 : r2->x1) < (r1->x2 > r2->x2 ? r2->x2 : r1->x2) && (r1->y1 > r2->y1 ? r1->y1 : r2->y1) < (r1->y2 > r2->y2 ? r2->y2 : r1->y2);
+207-}
+208-
+209-void intersect_rect(struct rect *v, struct rect *r1, struct rect *r2)
+210-{
+211-	v->x1 = r1->x1 > r2->x1 ? r1->x1 : r2->x1;
+212-	v->x2 = r1->x2 > r2->x2 ? r2->x2 : r1->x2;
+213-	v->y1 = r1->y1 > r2->y1 ? r1->y1 : r2->y1;
+214-	v->y2 = r1->y2 > r2->y2 ? r2->y2 : r1->y2;
+215-}
+216-
+217-void unite_rect(struct rect *v, struct rect *r1, struct rect *r2)
+218-{
+219-	if (!is_rect_valid(r1)) {
+220-		if (v != r2) memcpy(v, r2, sizeof(struct rect));
+221-		return;
+222-	}
+223-	if (!is_rect_valid(r2)) {
+224-		if (v != r1) memcpy(v, r1, sizeof(struct rect));
+225-		return;
+226-	}
+227-	v->x1 = r1->x1 < r2->x1 ? r1->x1 : r2->x1;
+228-	v->x2 = r1->x2 < r2->x2 ? r2->x2 : r1->x2;
+229-	v->y1 = r1->y1 < r2->y1 ? r1->y1 : r2->y1;
+230-	v->y2 = r1->y2 < r2->y2 ? r2->y2 : r1->y2;
+231-}
+232-
+233-#define R_GR	8
+234-
+235-struct rect_set *init_rect_set(void)
+236-{
+237-	struct rect_set *s;
+238-	s = mem_calloc(sizeof(struct rect_set) + sizeof(struct rect) * R_GR);
+239-	s->rl = R_GR;
+240-	s->m = 0;
+241-	return s;
+242-}
+243-
+244-void add_to_rect_set(struct rect_set **s, struct rect *r)
+245-{
+246-	struct rect_set *ss = *s;
+247-	int i;
+248-	if (!is_rect_valid(r)) return;
+249-	for (i = 0; i < ss->rl; i++) if (!ss->r[i].x1 && !ss->r[i].x2 && !ss->r[i].y1 && !ss->r[i].y2) {
+250-		x:
+251-		memcpy(&ss->r[i], r, sizeof(struct rect));
+
+===== sched.c: install_timer =====
+118-		r->last_loaded = r->loaded;
+119-		r->elapsed += a;
+120-	}
+121-	r->last_time = now;
+122:	r->timer = install_timer(SPD_DISP_TIME, stat_timer, c);
+123-	if (!st_r) send_connection_info(c);
+124-}
+125-
+126-void setcstate(struct connection *c, int state)
+127-{
+128-	struct status *stat;
+129-	struct list_head *lstat;
+130-	if (state < 0)
+131-		if (c->cache)
+132-			finish_cache_entry(c->cache);
+133-	if (c->state < 0 && state >= 0) c->prev_error = c->state;
+134-	if ((c->state = state) == S_TRANS) {
+135-		struct remaining_info *r = &c->prg;
+136-		if (r->timer == NULL) {
+137-			tcount count = c->count;
+138-			if (!r->valid) {
+139-				memset(r, 0, sizeof(struct remaining_info));
+140-				r->valid = 1;
+141-			}
+142-			r->last_time = get_time();
+143-			r->last_loaded = r->loaded;
+144-			st_r = 1;
+145-			stat_timer(c);
+146-			st_r = 0;
+147-			if (connection_disappeared(c, count)) return;
+148-		}
+149-	} else {
+150-		struct remaining_info *r = &c->prg;
+151-		if (r->timer != NULL) kill_timer(r->timer), r->timer = NULL;
+152-	}
+153-	foreach(struct status, stat, lstat, c->statuss) {
+154-		stat->state = state;
+155-		stat->prev_error = c->prev_error;
+156-	}
+157-	if (state >= 0) send_connection_info(c);
+158-}
+159-
+160-static struct k_conn *is_host_on_keepalive_list(struct connection *c)
+161-{
+162-	unsigned char *ho;
+163-	int po;
+164-	void (*ph)(struct connection *);
+165-	struct k_conn *h;
+166-	struct list_head *lh;
+167-	if ((po = get_port(c->url)) == -1) return NULL;
+168-	if (!(ph = get_protocol_handle(c->url))) return NULL;
+169-	if (!(ho = get_keepalive_id(c->url))) return NULL;
+170-	foreach(struct k_conn, h, lh, keepalive_connections)
+171-		if (h->protocol == ph && h->port == po && !strcmp(cast_const_char h->host, cast_const_char ho)) {
+172-			mem_free(ho);
+173-			return h;
+174-		}
+175-	mem_free(ho);
+176-	return NULL;
+177-}
+178-
+179-int get_keepalive_socket(struct connection *c, int *protocol_data)
+180-{
+181-	struct k_conn *k;
+182-	int cc;
+183-	if (c->tries > 0 || c->unrestartable) return -1;
+184-	if (!(k = is_host_on_keepalive_list(c))) return -1;
+185-	cc = k->conn;
+186-	if (protocol_data) *protocol_data = k->protocol_data;
+187-#ifdef HAVE_SSL
+188-	freeSSL(c->ssl);
+189-	c->ssl = k->ssl;
+190-#endif
+191-	memcpy(&c->last_lookup_state, &k->last_lookup_state, sizeof(struct lookup_state));
+192-	del_from_list(k);
+193-	mem_free(k->host);
+194-	mem_free(k);
+195-	c->sock1 = cc;
+196-	if (max_tries == 1) c->tries = -1;
+197-	c->keepalive = 1;
+198-	return 0;
+199-}
+200-
+201-static int abort_all_keepalive_connections(void)
+202-{
+--
+398-			del_keepalive_socket(list_struct(keepalive_connections.prev, struct k_conn));
+399-		else
+400-			internal_error("keepalive list empty");
+401-	if (!list_empty(keepalive_connections))
+402:		keepalive_timeout = install_timer(KEEPALIVE_CHECK_TIME, keepalive_timer, NULL);
+403-}
+404-
+405-static void add_to_queue(struct connection *c)
+406-{
+407-	struct connection *cc;
+408-	struct list_head *lcc;
+409-	int pri = getpri(c);
+410-	foreach(struct connection, cc, lcc, queue) if (getpri(cc) > pri) break;
+411-	add_before_list_entry(lcc, &c->list_entry);
+412-}
+413-
+414-static void sort_queue(void)
+415-{
+416-	struct connection *c, *n;
+417-	struct list_head *lc;
+418-	int swp;
+419-	do {
+420-		swp = 0;
+421-		foreach(struct connection, c, lc, queue) if (c->list_entry.next != &queue) {
+422-			n = list_struct(c->list_entry.next, struct connection);
+423-			if (getpri(n) < getpri(c)) {
+424-				del_from_list(c);
+425-				add_after_pos(n, c);
+426-				swp = 1;
+427-			}
+428-		}
+429-	} while (swp);
+430-}
+431-
+432-static void interrupt_connection(struct connection *c)
+433-{
+434-#ifdef HAVE_SSL
+435-	freeSSL(c->ssl);
+436-	c->ssl = NULL;
+437-#endif
+438-	close_socket(&c->sock1);
+439-	free_connection_data(c);
+440-}
+441-
+442-static void suspend_connection(struct connection *c)
+443-{
+444-	interrupt_connection(c);
+445-	setcstate(c, S_WAIT);
+446-}
+447-
+448-static int try_to_suspend_connection(struct connection *c, unsigned char *ho)
+449-{
+450-	int pri = getpri(c);
+451-	struct connection *d;
+452-	struct list_head *ld;
+453-	foreachback(struct connection, d, ld, queue) {
+454-		if (getpri(d) <= pri) return -1;
+455-		if (d->state == S_WAIT) continue;
+456-		if (d->unrestartable == 2 && getpri(d) < PRI_CANCEL) continue;
+457-		if (ho) {
+458-			unsigned char *h;
+459-			if (!(h = get_host_name(d->url))) continue;
+460-			if (strcmp(cast_const_char h, cast_const_char ho)) {
+461-				mem_free(h);
+462-				continue;
+463-			}
+464-			mem_free(h);
+465-		}
+466-		suspend_connection(d);
+467-		return 0;
+468-	}
+469-	return -1;
+470-}
+471-
+472-int is_noproxy_host(unsigned char *host)
+473-{
+474-	if (!proxies.only_proxies) {
+475-		unsigned char *np = proxies.no_proxy;
+476-		int host_l = (int)strlen(cast_const_char host);
+477-		if (*np) while (1) {
+478-			int l = (int)strcspn(cast_const_char np, ",");
+479-			if (l > host_l)
+480-				goto no_match;
+481-			if (l < host_l && host[host_l - l - 1] != '.')
+482-				goto no_match;
+--
+1068-
+1069-static void connection_timeout_1(void *c_)
+1070-{
+1071-	struct connection *c = (struct connection *)c_;
+1072:	c->timer = install_timer(get_timeout_value(c), connection_timeout, c);
+1073-}
+1074-
+1075-void clear_connection_timeout(struct connection *c)
+1076-{
+1077-	if (c->timer != NULL) kill_timer(c->timer), c->timer = NULL;
+1078-}
+1079-
+1080-void set_connection_timeout(struct connection *c)
+1081-{
+1082-	clear_connection_timeout(c);
+1083:	c->timer = install_timer(get_timeout_value(c), connection_timeout_1, c);
+1084-}
+1085-
+1086-void set_connection_timeout_keepal(struct connection *c)
+1087-{
+1088-	if (c->keepalive && !c->unrestartable) {
+1089-		clear_connection_timeout(c);
+1090:		c->timer = install_timer(timeout_multiple_addresses * 1000, connection_timeout, c);
+1091-		return;
+1092-	}
+1093-	set_connection_timeout(c);
+1094-}
+1095-
+1096-void abort_all_connections(void)
+1097-{
+1098-	while (!list_empty(queue)) {
+1099-		struct connection *c = list_struct(queue.next, struct connection);
+1100-		setcstate(c, S_INTERRUPTED);
+1101-		abort_connection(c);
+1102-	}
+1103-	abort_all_keepalive_connections();
+1104-}
+1105-
+1106-int abort_background_connections(void)
+1107-{
+1108-	int did_something = 0;
+1109-	struct connection *c;
+1110-	struct list_head *lc;
+1111-again:
+1112-	foreach(struct connection, c, lc, queue) {
+1113-		if (getpri(c) >= PRI_CANCEL) {
+1114-			setcstate(c, S_INTERRUPTED);
+1115-			abort_connection(c);
+1116-			did_something = 1;
+1117-			goto again;
+1118-		}
+1119-	}
+1120-	return did_something | abort_all_keepalive_connections();
+1121-}
+1122-
+1123-int is_entry_used(struct cache_entry *e)
+1124-{
+1125-	struct connection *c;
+1126-	struct list_head *lc;
+1127-	foreach(struct connection, c, lc, queue) if (c->cache == e) return 1;
+1128-	return 0;
+1129-}
+1130-
+1131-struct blacklist_entry {
+1132-	list_entry_1st
+1133-	int flags;
+1134-	list_entry_last
+1135-	unsigned char host[1];
+1136-};
+1137-
+1138-static struct list_head blacklist = { &blacklist, &blacklist };
+1139-
+1140-void add_blacklist_entry(unsigned char *host, int flags)
+1141-{
+1142-	struct blacklist_entry *b;
+1143-	struct list_head *lb;
+1144-	size_t sl;
+1145-	foreach(struct blacklist_entry, b, lb, blacklist) if (!casestrcmp(host, b->host)) {
+1146-		b->flags |= flags;
+1147-		return;
+1148-	}
+1149-	sl = strlen(cast_const_char host);
+1150-	if (sl > MAXINT - sizeof(struct blacklist_entry)) overalloc();
+1151-	b = mem_alloc(sizeof(struct blacklist_entry) + sl);
+1152-	b->flags = flags;
+1153-	strcpy(cast_char b->host, cast_const_char host);
+1154-	add_to_list(blacklist, b);
+1155-}
+1156-
+1157-void del_blacklist_entry(unsigned char *host, int flags)
+1158-{
+1159-	struct blacklist_entry *b;
+1160-	struct list_head *lb;
+1161-	foreach(struct blacklist_entry, b, lb, blacklist) if (!casestrcmp(host, b->host)) {
+1162-		b->flags &= ~flags;
+1163-		if (!b->flags) {
+1164-			del_from_list(b);
+1165-			mem_free(b);
+1166-		}
+1167-		return;
+1168-	}
+1169-}
+1170-
+
+===== sched.c: register_bottom_half =====
+100-	uttime now = get_time();
+101-	uttime a = now - r->last_time;
+102-	if (a > SPD_DISP_TIME * 100)
+103-		a = SPD_DISP_TIME * 100;
+104:	if (getpri(c) == PRI_CANCEL && (c->est_length > (longlong)memory_cache_size * MAX_CACHED_OBJECT || c->from > (longlong)memory_cache_size * MAX_CACHED_OBJECT)) register_bottom_half(check_queue, NULL);
+105-	if (c->state > S_WAIT) {
+106-		r->loaded = c->received;
+107-		if ((r->size = c->est_length) < (r->pos = c->from) && r->size != -1)
+108-			r->size = c->from;
+109-		r->dis_b += a;
+110-		while (r->dis_b >= SPD_DISP_TIME * CURRENT_SPD_SEC) {
+111-			r->cur_loaded -= r->data_in_secs[0];
+112-			memmove(r->data_in_secs, r->data_in_secs + 1, sizeof(off_t) * (CURRENT_SPD_SEC - 1));
+113-			r->data_in_secs[CURRENT_SPD_SEC - 1] = 0;
+114-			r->dis_b -= SPD_DISP_TIME;
+115-		}
+116-		r->data_in_secs[CURRENT_SPD_SEC - 1] += r->loaded - r->last_loaded;
+117-		r->cur_loaded += r->loaded - r->last_loaded;
+118-		r->last_loaded = r->loaded;
+119-		r->elapsed += a;
+120-	}
+121-	r->last_time = now;
+122-	r->timer = install_timer(SPD_DISP_TIME, stat_timer, c);
+123-	if (!st_r) send_connection_info(c);
+124-}
+125-
+126-void setcstate(struct connection *c, int state)
+127-{
+128-	struct status *stat;
+129-	struct list_head *lstat;
+130-	if (state < 0)
+131-		if (c->cache)
+132-			finish_cache_entry(c->cache);
+133-	if (c->state < 0 && state >= 0) c->prev_error = c->state;
+134-	if ((c->state = state) == S_TRANS) {
+135-		struct remaining_info *r = &c->prg;
+136-		if (r->timer == NULL) {
+137-			tcount count = c->count;
+138-			if (!r->valid) {
+139-				memset(r, 0, sizeof(struct remaining_info));
+140-				r->valid = 1;
+141-			}
+142-			r->last_time = get_time();
+143-			r->last_loaded = r->loaded;
+144-			st_r = 1;
+145-			stat_timer(c);
+146-			st_r = 0;
+147-			if (connection_disappeared(c, count)) return;
+148-		}
+149-	} else {
+150-		struct remaining_info *r = &c->prg;
+151-		if (r->timer != NULL) kill_timer(r->timer), r->timer = NULL;
+152-	}
+153-	foreach(struct status, stat, lstat, c->statuss) {
+154-		stat->state = state;
+155-		stat->prev_error = c->prev_error;
+156-	}
+157-	if (state >= 0) send_connection_info(c);
+158-}
+159-
+160-static struct k_conn *is_host_on_keepalive_list(struct connection *c)
+161-{
+162-	unsigned char *ho;
+163-	int po;
+164-	void (*ph)(struct connection *);
+--
+349-	add_to_list(keepalive_connections, k);
+350-	del:
+351-	del_connection(c);
+352-	check_queue_bugs();
+353:	register_bottom_half(check_queue, NULL);
+354-	return;
+355-	clos:
+356-	EINTRLOOP(rs, close(c->sock1));
+357-	check_queue_bugs();
+358:	register_bottom_half(check_queue, NULL);
+359-}
+360-
+361-static void del_keepalive_socket(struct k_conn *kc)
+362-{
+363-	int rs;
+364-	del_from_list(kc);
+365-#ifdef HAVE_SSL
+366-	freeSSL(kc->ssl);
+367-#endif
+368-	EINTRLOOP(rs, close(kc->conn));
+369-	mem_free(kc->host);
+370-	mem_free(kc);
+371-}
+372-
+373-static struct timer *keepalive_timeout = NULL;
+374-
+375-static void keepalive_timer(void *x)
+376-{
+377-	keepalive_timeout = NULL;
+378-	check_keepalive_connections();
+379-}
+380-
+381-static void check_keepalive_connections(void)
+382-{
+383-	struct k_conn *kc;
+384-	struct list_head *lkc;
+385-	uttime ct = get_absolute_time();
+386-	int p = 0;
+387-	if (keepalive_timeout != NULL)
+388-		kill_timer(keepalive_timeout), keepalive_timeout = NULL;
+389-	foreach(struct k_conn, kc, lkc, keepalive_connections) {
+390-		if (can_read(kc->conn) || ct - kc->add_time > kc->timeout) {
+391-			lkc = lkc->prev;
+392-			del_keepalive_socket(kc);
+393-		} else
+394-			p++;
+395-	}
+396-	for (; p > MAX_KEEPALIVE_CONNECTIONS; p--)
+397-		if (!list_empty(keepalive_connections))
+398-			del_keepalive_socket(list_struct(keepalive_connections.prev, struct k_conn));
+399-		else
+400-			internal_error("keepalive list empty");
+401-	if (!list_empty(keepalive_connections))
+402-		keepalive_timeout = install_timer(KEEPALIVE_CHECK_TIME, keepalive_timer, NULL);
+403-}
+404-
+405-static void add_to_queue(struct connection *c)
+406-{
+407-	struct connection *cc;
+408-	struct list_head *lcc;
+409-	int pri = getpri(c);
+410-	foreach(struct connection, cc, lcc, queue) if (getpri(cc) > pri) break;
+411-	add_before_list_entry(lcc, &c->list_entry);
+412-}
+413-
+414-static void sort_queue(void)
+415-{
+416-	struct connection *c, *n;
+417-	struct list_head *lc;
+418-	int swp;
+--
+596-	interrupt_connection(c);
+597-	if (!is_connection_restartable(c)) {
+598-		del_connection(c);
+599-		check_queue_bugs();
+600:		register_bottom_half(check_queue, NULL);
+601-	} else {
+602-		c->tries++;
+603-		c->prev_error = c->state;
+604-		run_connection(c);
+605-	}
+606-}
+607-
+608-void abort_connection(struct connection *c)
+609-{
+610-	if (c->running) interrupt_connection(c);
+611-	del_connection(c);
+612-	check_queue_bugs();
+613:	register_bottom_half(check_queue, NULL);
+614-}
+615-
+616-static int try_connection(struct connection *c)
+617-{
+618-	struct h_conn *hc;
+619-	if (!c->doh) {
+620-		if ((hc = is_host_on_list(c))) {
+621-			if (hc->conn >= max_connections_to_host) {
+622-				if (try_to_suspend_connection(c, hc->host)) return 0;
+623-				else return -1;
+624-			}
+625-		}
+626-		if (active_connections >= max_connections) {
+627-			if (try_to_suspend_connection(c, NULL)) return 0;
+628-			else return -1;
+629-		}
+630-	}
+631-	run_connection(c);
+632-	return 1;
+633-}
+634-
+635-#ifdef DEBUG
+636-static void check_queue_bugs(void)
+637-{
+638-	struct connection *d;
+639-	struct list_head *ld;
+640-	int p = 0, ps = 0;
+641-	int cc;
+642-	again:
+643-	cc = 0;
+644-	foreach(struct connection, d, ld, queue) {
+645-		int q = getpri(d);
+646-		cc += d->running && !d->doh;
+647-		if (q < p) {
+648-			if (!ps) {
+649-				internal_error("queue is not sorted");
+650-				sort_queue();
+651-				ps = 1;
+652-				goto again;
+653-			} else {
+654-				internal_error("queue is not sorted even after sort_queue!");
+655-				break;
+656-			}
+657-		} else p = q;
+658-		if (d->state < 0) {
+659-			internal_error("interrupted connection on queue (conn %s, state %d)", d->url, d->state);
+660-			ld = ld->prev;
+661-			abort_connection(d);
+662-		}
+663-	}
+664-	if (cc != active_connections) {
+665-		internal_error("bad number of active connections (counted %d, stored %d)", cc, active_connections);
+666-		active_connections = cc;
+667-	}
+668-}
+669-#endif
+670-
+671-void check_queue(void *dummy)
+672-{
+673-	struct connection *c;
+--
+878-		if (getpri(c) > pri) {
+879-			del_from_list(c);
+880-			c->pri[pri]++;
+881-			add_to_queue(c);
+882:			register_bottom_half(check_queue, NULL);
+883-		} else c->pri[pri]++;
+884-		if (stat) {
+885-			stat->prg = &c->prg;
+886-			stat->c = c;
+887-			stat->ce = c->cache;
+888-			add_to_list(c->statuss, stat);
+889-			setcstate(c, c->state);
+890-		}
+891-		check_queue_bugs();
+892-		goto ret;
+893-	}
+894-	c = mem_calloc(sizeof(struct connection));
+895-	c->count = connection_count++;
+896-	c->url = u;
+897-	c->prev_url = stracpy(prev_url);
+898-	c->running = 0;
+899-	c->prev_error = 0;
+900-	if (position || must_detach) {
+901-		c->from = position;
+902-	} else if (no_cache >= NC_IF_MOD || !e) {
+903-		c->from = 0;
+904-	} else {
+905-		struct fragment *frag;
+906-		struct list_head *lfrag;
+907-		c->from = 0;
+908-		foreach(struct fragment, frag, lfrag, e->frag) {
+909-			if (frag->offset != c->from)
+910-				break;
+911-			c->from += frag->length;
+912-		}
+913-	}
+914-	memset(c->pri, 0, sizeof c->pri);
+915-	c->pri[pri] = 1;
+916-	c->no_cache = no_cache;
+917-	c->sock1 = c->sock2 = -1;
+918-	c->dnsquery = NULL;
+919-	c->tries = 0;
+920-	c->netcfg_stamp = netcfg_stamp;
+921-	init_list(c->statuss);
+922-	c->info = NULL;
+923-	c->buffer = NULL;
+924-	c->newconn = NULL;
+925-	c->cache = NULL;
+926-	c->est_length = -1;
+927-	c->unrestartable = 0;
+928-#ifdef HAVE_ANY_COMPRESSION
+929-	c->no_compress = http_options.no_compression || no_compress || dmp == D_SOURCE;
+930-#else
+931-	c->no_compress = 1;
+932-#endif
+933-	c->doh = doh;
+934-	c->prg.timer = NULL;
+935-	c->timer = NULL;
+936-	if (position || must_detach) {
+937-		if (new_cache_entry(cast_uchar "", &c->cache)) {
+938-			mem_free(c->url);
+939-			if (c->prev_url) mem_free(c->prev_url);
+940-			mem_free(c);
+941-			if (stat) {
+942-				stat->state = S_OUT_OF_MEM;
+--
+956-	}
+957-	add_to_queue(c);
+958-	setcstate(c, S_WAIT);
+959-	check_queue_bugs();
+960:	register_bottom_half(check_queue, NULL);
+961-
+962-ret:
+963-	return;
+964-}
+965-
+966-void change_connection(struct status *oldstat, struct status *newstat, int newpri)
+967-{
+968-	struct connection *c;
+969-	int oldpri;
+970-	oldpri = oldstat->pri;
+971-	if (oldstat->state < 0) {
+972-		if (newstat) {
+973-			struct cache_entry *ce = oldstat->ce;
+974-			if (ce) ce->refcount++;
+975-			newstat->ce = oldstat->ce;
+976-			newstat->state = oldstat->state;
+977-			newstat->prev_error = oldstat->prev_error;
+978-			if (newstat->end) newstat->end(newstat, newstat->data);
+979-			if (ce) ce->refcount--;
+980-		}
+981-		return;
+982-	}
+983-	check_queue_bugs();
+984-	c = oldstat->c;
+985-	if (--c->pri[oldpri] < 0) {
+986-		internal_error("priority counter underflow");
+987-		c->pri[oldpri] = 0;
+988-	}
+989-	c->pri[newpri]++;
+990-	del_from_list(oldstat);
+991-	oldstat->state = S_INTERRUPTED;
+992-	if (newstat) {
+993-		newstat->prg = &c->prg;
+994-		add_to_list(c->statuss, newstat);
+995-		newstat->state = c->state;
+996-		newstat->prev_error = c->prev_error;
+997-		newstat->pri = newpri;
+998-		newstat->c = c;
+999-		newstat->ce = c->cache;
+1000-	}
+1001-	if (c->detached && !newstat) {
+1002-		setcstate(c, S_INTERRUPTED);
+1003-		abort_connection(c);
+1004-	}
+1005-	sort_queue();
+1006-	check_queue_bugs();
+1007:	register_bottom_half(check_queue, NULL);
+1008-}
+1009-
+1010-void detach_connection(struct status *stat, off_t pos, int want_to_restart, int dont_check_refcount)
+1011-{
+1012-	struct connection *c;
+1013-	int i, n_users;
+1014-	off_t l;
+1015-	if (stat->state < 0) return;
+1016-	c = stat->c;
+1017-	if (c->no_compress && want_to_restart) return;
+1018-	if (!c->cache || (!dont_check_refcount && c->cache->refcount)) return;
+1019-	want_to_restart |= pos > c->from && is_connection_seekable(c);
+1020-	if (c->detached) goto detach_done;
+1021-	if (c->est_length == -1) l = c->from;
+1022-	else l = c->est_length;
+1023-	if (!dont_check_refcount && l < (longlong)memory_cache_size * MAX_CACHED_OBJECT && !want_to_restart) return;
+1024-	n_users = 0;
+1025-	for (i = 0; i < PRI_CANCEL; i++) n_users += c->pri[i];
+1026-	if (!n_users) internal_error("detaching free connection");
+1027-	if (n_users != 1) return;
+1028-	shrink_memory(SH_CHECK_QUOTA, 0);
+1029-	detach_cache_entry(c->cache);
+1030-	c->detached = 1;
+1031-	detach_done:
+1032-	free_entry_to(c->cache, pos);
+1033-
+1034-	if (c->detached < 2 && want_to_restart) {
+1035-		int running = c->running;
+1036-		c->no_compress = 1;
+1037-		if (running) interrupt_connection(c);
+1038-		c->from = pos;
+1039-		if (running) run_connection(c);
+1040-		c->detached = 2;
+1041-	}
+1042-}
+1043-
+1044-static uttime get_timeout_value(struct connection *c)
+1045-{
+1046-	uttime t;
+1047-	if (c->state == S_CONN || c->state == S_CONN_ANOTHER)
+1048-		t = timeout_multiple_addresses * (c->tries < 1 ? 1 : c->tries + 1);
+1049-	else if (c->unrestartable)
+1050-		t = unrestartable_receive_timeout;
+1051-	else
+1052-		t = receive_timeout;
+1053-	t *= 500;
+1054-	return t;
+1055-}
+1056-
+1057-static void connection_timeout(void *c_)
+1058-{
+1059-	struct connection *c = (struct connection *)c_;
+1060-	c->timer = NULL;
+1061-	if (c->state == S_CONN || c->state == S_CONN_ANOTHER) {
+1062-		retry_connect(c, get_error_from_errno(ETIMEDOUT), 0);
+1063-		return;
+1064-	}
+1065-	setcstate(c, S_TIMEOUT);
+1066-	retry_connection(c);
+1067-}
+
+===== configure.in: GRDRV_FB =====
+1074-
+1075-if test "$disable_fb" != yes; then
+1076-	AC_CHECK_HEADERS(linux/fb.h linux/kd.h linux/vt.h sys/mman.h)
+1077-	if test "$ac_cv_header_linux_fb_h" = yes && test "$ac_cv_header_linux_kd_h" = yes && test "$ac_cv_header_linux_vt_h" = yes && test "$ac_cv_header_sys_mman_h" = yes && test "$ac_cv_header_sys_ioctl_h" = yes && test "$cf_have_gpm" = yes; then
+1078:		AC_DEFINE(GRDRV_FB)
+1079-		drivers="$drivers FB"
+1080-	fi
+1081-fi
+1082-
+1083-if test "$disable_directfb" != yes; then
+1084-	AC_PATH_PROG(DIRECTFB_CONFIG, directfb-config, no)
+1085-	if test "$DIRECTFB_CONFIG" != "no"; then
+1086-	        AC_MSG_CHECKING(for DirectFB >= 0.9.17)
+1087-        	directfb_version=`$DIRECTFB_CONFIG --version`
+1088-		if expr $directfb_version \>= 0.9.17 >/dev/null; then
+1089-			AC_MSG_RESULT(yes)
+1090-
+1091-			DIRECTFB_CFLAGS="`$DIRECTFB_CONFIG --cflags`"
+1092-			DIRECTFB_LIBS="`$DIRECTFB_CONFIG --libs`"
+1093-			pkgconfig_directfb=yes
+1094-		else
+1095-			AC_MSG_RESULT(no)
+1096-			pkgconfig_directfb=no
+1097-		fi
+1098-	else
+1099-		PKG_CHECK_MODULES(DIRECTFB, directfb, pkgconfig_directfb=yes, pkgconfig_directfb=no)
+1100-		if test "$PKG_CONFIG" != no -a "$pkgconfig_directfb" = no; then
+1101-			AC_MSG_RESULT(no)
+1102-		fi
+1103-	fi
+1104-
+1105-	if test "$pkgconfig_directfb" = "yes"; then
+1106-		CPPFLAGS_X="$CPPFLAGS"
+1107-		LIBS_X="$LIBS"
+1108-
+1109-		CPPFLAGS="$CPPFLAGS $DIRECTFB_CFLAGS"
+1110-		LIBS="$DIRECTFB_LIBS $LIBS"
+1111-
+1112-		AC_CACHE_CHECK([for DirectFBInit], ac_cv_have_directfbinit,
+1113-			AC_TRY_LINK([#include <directfb.h>], [DirectFBInit(NULL, NULL)], ac_cv_have_directfbinit=yes, ac_cv_have_directfbinit=no)
+1114-		)
+1115-
+1116-		if test "$ac_cv_have_directfbinit" = yes; then
+1117-			AC_DEFINE(GRDRV_DIRECTFB)
+1118-			drivers="$drivers DIRECTFB"
+1119-		else
+1120-			CPPFLAGS="$CPPFLAGS_X"
+1121-			LIBS="$LIBS_X"
+1122-		fi
+1123-	fi
+1124-fi
+1125-
+1126-if test "$disable_x" != yes; then
+1127-	CPPFLAGS_X="$CPPFLAGS"
+1128-	LIBS_X="$LIBS"
+1129-
+1130-	AC_PATH_X
+1131-
+1132-	if test "$static_link" != 0; then
+1133-		AC_CHECK_LIB(pthread, pthread_create)
+1134-		AC_CHECK_LIB(dl, dlopen)
+1135-		AC_CHECK_LIB(Xdmcp, XdmcpWrap)
+1136-		AC_CHECK_LIB(Xau, XauGetBestAuthByAddr)
+1137-		AC_CHECK_LIB(xcb, xcb_connect)
+1138-		AC_CHECK_LIB(xcb-xlib, xcb_get_request_sent)
+1139-	fi
+1140-
+1141-	LIBS="-lX11 $LIBS"
+1142-	if test "$have_x" = yes; then
+1143-		test -n "$x_libraries" && LIBS="-L$x_libraries $LIBS"
+1144-		test -n "$x_includes" && CPPFLAGS="$CPPFLAGS -I$x_includes"
+1145-	fi
+1146-
+1147-	AC_CHECK_HEADERS(X11/Xlib.h X11/X.h X11/Xutil.h X11/Xatom.h X11/Xlocale.h X11/keysymdef.h)
+1148-
+1149-	AC_HAVE_FUNCS(XOpenDisplay XOpenIM XCloseIM XCreateIC XDestroyIC XwcLookupString Xutf8LookupString XSupportsLocale XmbTextListToTextProperty)
+1150-
+1151-	AC_CACHE_CHECK([for Xsetlocale], ac_cv_have_Xsetlocale,
+1152-		AC_TRY_LINK([#include <X11/Xlocale.h>], [setlocale(0, NULL); return 0;], ac_cv_have_Xsetlocale=yes, ac_cv_have_Xsetlocale=no)
+1153-	)
+1154-	if test "$ac_cv_have_Xsetlocale" = yes; then
+1155-		AC_DEFINE(HAVE_XSETLOCALE)
+1156-	fi
+1157-
+1158-
+
+===== Makefile.in: drivers.o =====
+95-CPPFLAGS = @CPPFLAGS@
+96-LDFLAGS = @LDFLAGS@
+97-links_OBJECTS =  af_unix.o avif.o auth.o beos.o bfu.o block.o bookmark.o \
+98-cache.o charsets.o compress.o connect.o cookies.o data.o default.o \
+99:dip.o directfb.o dither.o dns.o doh.o dos.o drivers.o error.o file.o \
+100-finger.o fn_impl.o fontconf.o font_inc.o framebuf.o freetype.o ftp.o \
+101-gif.o grx.o hpux.o html.o html_gr.o html_r.o html_tbl.o http.o https.o \
+102-img.o imgcache.o jpeg.o jsint.o kbd.o language.o listedit.o lru.o \
+103-mailto.o main.o memory.o menu.o objreq.o os_dep.o pmshell.o png.o \
+104-sched.o select.o session.o smb.o string.o suffix.o svg.o svgalib.o \
+105-terminal.o tiff.o types.o url.o view.o view_gr.o vms.o webp.o x.o xbm.o
+106-@ATHEOS_GR_TRUE@links_DEPENDENCIES =  atheos.o
+107-@HAIKU_GR_TRUE@links_DEPENDENCIES =  haiku.o
+108-@JAVASCRIPT_TRUE@links_DEPENDENCIES =  builtin.o context.o ipret.o \
+109-@JAVASCRIPT_TRUE@javascr.o javascript.o md5.o md5hl.o ns.o pomocny.o \
+110-@JAVASCRIPT_TRUE@regexp.o
+111-links_LDFLAGS = 
+112-CFLAGS = @CFLAGS@
+113-COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+114-CCLD = $(CC)
+115-LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
+116-man1dir = $(mandir)/man1
+117-MANS = $(man_MANS)
+118-
+119-NROFF = nroff
+120-DIST_COMMON =  README ./stamp-h.in AUTHORS COPYING ChangeLog INSTALL \
+121-Makefile.am Makefile.in NEWS acconfig.h aclocal.m4 config.guess \
+122-config.h.in config.sub configure configure.in install-sh missing \
+123-mkinstalldirs
+124-
+125-
+126-DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
+127-
+128-TAR = tar
+129-GZIP_ENV = --best
+130-SOURCES = $(links_SOURCES)
+131-OBJECTS = $(links_OBJECTS)
+132-
+133-all: all-redirect
+134-.SUFFIXES:
+135-.SUFFIXES: .S .c .o .s
+136-$(srcdir)/Makefile.in: Makefile.am $(top_srcdir)/configure.in $(ACLOCAL_M4) 
+137-	cd $(top_srcdir) && $(AUTOMAKE) --gnu --include-deps Makefile
+138-
+139-Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
+--
+386-	setup.h language.h codepage.h
+387-doh.o: doh.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+388-	setup.h language.h codepage.h
+389-dos.o: dos.c
+390:drivers.o: drivers.c cfg.h config.h links.h com-defs.h os_dep.h \
+391-	os_depx.h setup.h language.h codepage.h
+392-error.o: error.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+393-	setup.h language.h codepage.h
+394-file.o: file.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+395-	setup.h language.h codepage.h
+396-finger.o: finger.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+397-	setup.h language.h codepage.h
+398-fn_impl.o: fn_impl.c links.h cfg.h config.h com-defs.h os_dep.h \
+399-	os_depx.h setup.h language.h codepage.h
+400-font_inc.o: font_inc.c cfg.h config.h links.h com-defs.h os_dep.h \
+401-	os_depx.h setup.h language.h codepage.h
+402-fontconf.o: fontconf.c cfg.h config.h links.h com-defs.h os_dep.h \
+403-	os_depx.h setup.h language.h codepage.h
+404-framebuf.o: framebuf.c cfg.h config.h links.h com-defs.h os_dep.h \
+405-	os_depx.h setup.h language.h codepage.h bits.h arrow.inc \
+406-	fbcommon.inc
+407-freetype.o: freetype.c cfg.h config.h links.h com-defs.h os_dep.h \
+408-	os_depx.h setup.h language.h codepage.h
+409-ftp.o: ftp.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+410-	setup.h language.h codepage.h
+411-gif.o: gif.c cfg.h config.h links.h com-defs.h os_dep.h os_depx.h \
+412-	setup.h language.h codepage.h
+413-grx.o: grx.c cfg.h config.h
+414-hpux.o: hpux.c
+415-html.o: html.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+416-	setup.h language.h codepage.h
+417-html_gr.o: html_gr.c cfg.h config.h links.h com-defs.h os_dep.h \
+418-	os_depx.h setup.h language.h codepage.h
+419-html_r.o: html_r.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+420-	setup.h language.h codepage.h
+421-html_tbl.o: html_tbl.c links.h cfg.h config.h com-defs.h os_dep.h \
+422-	os_depx.h setup.h language.h codepage.h
+423-http.o: http.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+424-	setup.h language.h codepage.h
+425-https.o: https.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+426-	setup.h language.h codepage.h certs.inc
+427-img.o: img.c links.h cfg.h config.h com-defs.h os_dep.h os_depx.h \
+428-	setup.h language.h codepage.h
+429-imgcache.o: imgcache.c cfg.h config.h links.h com-defs.h os_dep.h \
+430-	os_depx.h setup.h language.h codepage.h
