@@ -8,6 +8,7 @@ on:
       - '.github/workflows/browser.yml'
       - 'scripts/build-browser-3ds.sh'
       - 'scripts/build-cia.sh'
+      - 'scripts/compile-upstream-3ds.py'
       - 'scripts/generate-cia-assets.py'
       - 'scripts/prepare-graphics-3ds.py'
       - 'scripts/prepare-upstream-3ds.py'
@@ -24,6 +25,7 @@ on:
       - '.github/workflows/browser.yml'
       - 'scripts/build-browser-3ds.sh'
       - 'scripts/build-cia.sh'
+      - 'scripts/compile-upstream-3ds.py'
       - 'scripts/generate-cia-assets.py'
       - 'scripts/prepare-graphics-3ds.py'
       - 'scripts/prepare-upstream-3ds.py'
@@ -80,6 +82,7 @@ jobs:
           bash -n scripts/build-browser-3ds.sh
           bash -n scripts/build-cia.sh
           sh -n scripts/fetch-links.sh
+          python3 -m py_compile scripts/compile-upstream-3ds.py
           python3 -m py_compile scripts/prepare-graphics-3ds.py
           python3 -m py_compile scripts/prepare-upstream-3ds.py
           python3 -m py_compile scripts/generate-cia-assets.py
@@ -142,6 +145,7 @@ jobs:
             browser-build.log
             cia-build.log
             build/browser-3ds/links-objects.txt
+            build/browser-3ds/upstream-object-paths.txt
             build/browser-3ds/logs/
             build/browser-3ds/*.map
             build/browser-3ds/*.elf
