@@ -27,10 +27,17 @@ extract_block() {
     printf '%s\n' "Generated from the verified upstream archive."
 
     extract_block links.h "struct graphics_driver" 140
-    extract_block links.h "struct graphics_device" 100
+    extract_block links.h "struct graphics_device" 140
+    extract_block links.h "keyboard_handler" 40
+    extract_block links.h "mouse_handler" 40
     extract_block links.h "struct bitmap" 60
+    extract_block links.h "install_timer" 50
+    extract_block links.h "kill_timer" 30
+    extract_block links.h "KBD_UP" 80
+    extract_block links.h "B_LEFT" 80
     extract_block drivers.c "graphics_drivers" 80
-    extract_block sched.c "install_timer" 80
+    extract_block sched.c "install_timer" 120
+    extract_block sched.c "kill_timer" 80
     extract_block sched.c "register_bottom_half" 60
     extract_block configure.in "GRDRV_FB" 80
     extract_block Makefile.in "drivers.o" 40
