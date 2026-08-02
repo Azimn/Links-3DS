@@ -1,0 +1,8 @@
+build/
+.cache/
+upstream/
+*.3dsx
+*.elf
+*.map
+*.smdh
+.DS_Store
