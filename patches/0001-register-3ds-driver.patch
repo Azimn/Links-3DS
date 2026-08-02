@@ -1,0 +1,17 @@
+--- a/drivers.c
++++ b/drivers.c
+@@
+ #ifdef GRDRV_SDL
+ extern struct graphics_driver sdl_driver;
+ #endif
++#ifdef GRDRV_3DS
++extern struct graphics_driver links_3ds_driver;
++#endif
+@@
+ static struct graphics_driver *graphics_drivers[] = {
++#ifdef GRDRV_3DS
++	&links_3ds_driver,
++#endif
+ #ifdef GRDRV_PMSHELL
+ 	&pmshell_driver,
+ #endif
