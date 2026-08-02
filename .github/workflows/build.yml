@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-probe:
@@ -66,6 +66,24 @@ jobs:
           test -s artifacts/links-2.30-interface-report.txt
           grep -q "struct graphics_driver" artifacts/links-2.30-interface-report.txt
           grep -q "graphics_drivers" artifacts/links-2.30-interface-report.txt
+
+      - name: Publish interface report
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          cp artifacts/links-2.30-interface-report.txt reports/links-2.30-interface-report.txt
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/links-2.30-interface-report.txt
+          if git diff --cached --quiet; then
+            echo "Interface report is already current"
+          else
+            git commit -m "Publish Links 2.30 interface report [skip ci]"
+            git push origin HEAD:main
+          fi
 
       - name: Build native graphics probe
         shell: bash
