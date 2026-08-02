@@ -134,6 +134,16 @@ jobs:
           printf '%s\n' "${DEVKITPRO}/tools/bin" >> "${GITHUB_PATH}"
           test -x "${DEVKITARM}/bin/arm-none-eabi-gcc"
 
+      - name: Verify host and target compilers
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v cc
+          command -v arm-none-eabi-gcc
+          cc --version
+          arm-none-eabi-gcc --version
+          test -d "${DEVKITPRO}/libctru/include"
+
       - name: Fetch verified Links 2.30 source
         shell: bash
         run: |
@@ -141,23 +151,32 @@ jobs:
           chmod +x scripts/fetch-links.sh
           scripts/fetch-links.sh
 
-      - name: Generate Links configuration header
+      - name: Generate host configuration header for interface validation
         shell: bash
         working-directory: upstream/links-2.30
         run: |
           set -euo pipefail
+
+          # This job validates that the staged 3DS graphics driver matches the
+          # Links 2.30 C interfaces. It does not link a complete 3DS browser.
+          # Generate cfg.h with the native runner compiler so configure can run
+          # its feature probes. Cross-configuring with arm-none-eabi-gcc causes
+          # every executable probe to fail and produces false results such as
+          # zero-sized integer types and a missing select() function.
           env \
-            CC=arm-none-eabi-gcc \
-            CFLAGS="-Os -march=armv6k -mtune=mpcore -mfloat-abi=hard" \
+            CC=cc \
+            CFLAGS="-O2" \
             ./configure \
               --build=x86_64-pc-linux-gnu \
-              --host=arm-none-eabi \
-              > configure-3ds.log 2>&1 || {
-                cat configure-3ds.log
+              --host=x86_64-pc-linux-gnu \
+              > configure-host.log 2>&1 || {
+                cat configure-host.log
                 test -f config.log && cat config.log
                 exit 1
               }
+
           test -s cfg.h
+          grep -q "SIZEOF_UNSIGNED" cfg.h
 
       - name: Compile staged 3DS graphics driver
         shell: bash
@@ -177,6 +196,7 @@ jobs:
             -fdata-sections \
             -DG \
             -DGRDRV_3DS \
+            -I"${DEVKITPRO}/libctru/include" \
             -Iupstream/links-2.30 \
             -Isource \
             -Iplatform/links_3ds \
@@ -185,10 +205,12 @@ jobs:
           test -s build/driver-check/graphics_3ds.o
           arm-none-eabi-size build/driver-check/graphics_3ds.o
 
-      - name: Upload driver validation object
+      - name: Upload driver validation diagnostics
         uses: actions/upload-artifact@v4
         with:
           name: links-3ds-driver-syntax-check
-          path: build/driver-check/graphics_3ds.o
+          path: |
+            build/driver-check/graphics_3ds.o
+            upstream/links-2.30/configure-host.log
           if-no-files-found: error
           retention-days: 14
