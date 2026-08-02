@@ -2,8 +2,8 @@
 """Apply the verified Links 2.30 driver integration to graphics_3ds.c.
 
 The repository keeps the staged driver readable, while CI and local full builds
-need the designated Links 2.30 initializer plus the input lifecycle hooks.
-This transformation is deterministic and idempotent.
+need the designated Links 2.30 initializer, platform services, and input
+lifecycle hooks. This transformation is deterministic and idempotent.
 """
 
 from pathlib import Path
@@ -23,6 +23,17 @@ if platform_include not in source:
         gfx_include + platform_include,
         1,
     )
+
+source = source.replace(
+    "    if (!gfx_3ds_init()) {\n",
+    "    if (!links_3ds_platform_init()) {\n",
+    1,
+)
+source = source.replace(
+    "    gfx_3ds_exit();\n    links_3ds_initialized = 0;\n",
+    "    links_3ds_platform_shutdown();\n    links_3ds_initialized = 0;\n",
+    1,
+)
 
 attach_block = (
     "    links_3ds_event_bridge_attach(dev);\n"
