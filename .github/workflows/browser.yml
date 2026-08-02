@@ -39,17 +39,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify host and 3DS toolchains
+      - name: Configure devkitPro PATH
         shell: bash
         run: |
           set -euo pipefail
           test -n "${DEVKITPRO:-}"
           test -n "${DEVKITARM:-}"
+          test -d "${DEVKITARM}/bin"
+          test -d "${DEVKITPRO}/tools/bin"
+          printf '%s\n' "${DEVKITARM}/bin" >> "${GITHUB_PATH}"
+          printf '%s\n' "${DEVKITPRO}/tools/bin" >> "${GITHUB_PATH}"
+
+      - name: Verify host and 3DS toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
           command -v cc
           command -v python3
           command -v arm-none-eabi-gcc
           command -v arm-none-eabi-size
           command -v 3dsxtool
+          cc --version
+          arm-none-eabi-gcc --version
           test -d "${DEVKITPRO}/libctru/include"
           test -d "${DEVKITPRO}/libctru/lib"
 
