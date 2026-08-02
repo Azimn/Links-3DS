@@ -243,6 +243,8 @@ jobs:
             -Wall \
             -Wextra \
             -Werror \
+            -Wno-unused-parameter \
+            -include dirent.h \
             -march=armv6k \
             -mtune=mpcore \
             -mfloat-abi=hard \
