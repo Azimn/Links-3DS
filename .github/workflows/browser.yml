@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/browser.yml'
       - 'scripts/build-browser-3ds.sh'
+      - 'scripts/prepare-graphics-3ds.py'
       - 'scripts/fetch-links.sh'
       - 'source/**'
       - 'src-3ds/**'
@@ -17,6 +18,7 @@ on:
     paths:
       - '.github/workflows/browser.yml'
       - 'scripts/build-browser-3ds.sh'
+      - 'scripts/prepare-graphics-3ds.py'
       - 'scripts/fetch-links.sh'
       - 'source/**'
       - 'src-3ds/**'
@@ -57,6 +59,16 @@ jobs:
           set -euo pipefail
           bash -n scripts/build-browser-3ds.sh
           sh -n scripts/fetch-links.sh
+          python3 -m py_compile scripts/prepare-graphics-3ds.py
+
+      - name: Prepare verified 3DS driver source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/prepare-graphics-3ds.py
+          grep -q '\.param = NULL' src-3ds/graphics_3ds.c
+          grep -q 'links_3ds_event_bridge_attach(dev)' src-3ds/graphics_3ds.c
+          grep -q 'links_3ds_platform_stop_input_timer()' src-3ds/graphics_3ds.c
 
       - name: Build full Links browser
         shell: bash
