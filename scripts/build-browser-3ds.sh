@@ -50,6 +50,7 @@ env CC=cc CFLAGS=-O2 ./configure "${CONFIGURE_ARGS[@]}" \
 
 test -s cfg.h
 test -s Makefile
+python3 "${ROOT_DIR}/scripts/prepare-upstream-3ds.py" "${UPSTREAM_DIR}"
 
 python3 - "${UPSTREAM_DIR}/drivers.c" <<'PY'
 from pathlib import Path
@@ -120,9 +121,6 @@ COMMON_CFLAGS=(
     -I"${ROOT_DIR}/src-3ds"
 )
 
-# The native cfg.h can omit target-only POSIX declaration paths. Force the
-# newlib declaration header only for upstream Links sources so close(), read(),
-# write(), lseek(), and related file-descriptor APIs have their real prototypes.
 UPSTREAM_CFLAGS=(
     "${COMMON_CFLAGS[@]}"
     -include unistd.h
