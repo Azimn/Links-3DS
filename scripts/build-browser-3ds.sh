@@ -16,6 +16,11 @@ export PATH="${DEVKITARM}/bin:${DEVKITPRO}/tools/bin:${PATH}"
 mkdir -p "${OBJ_DIR}" "${LOG_DIR}"
 
 "${ROOT_DIR}/scripts/fetch-links.sh"
+python3 "${ROOT_DIR}/scripts/prepare-graphics-3ds.py"
+
+grep -q '\.param = NULL' "${ROOT_DIR}/src-3ds/graphics_3ds.c"
+grep -q 'links_3ds_event_bridge_attach(dev)' "${ROOT_DIR}/src-3ds/graphics_3ds.c"
+grep -q 'links_3ds_platform_stop_input_timer()' "${ROOT_DIR}/src-3ds/graphics_3ds.c"
 
 cd "${UPSTREAM_DIR}"
 
@@ -81,7 +86,7 @@ cat > "${BUILD_DIR}/print-objs.mk" <<EOF
 include ${UPSTREAM_DIR}/Makefile
 .PHONY: print-objs
 print-objs:
-	@printf '%s\n' \"\$(OBJS)\"
+	@printf '%s\n' "\$(OBJS)"
 EOF
 
 make -s -f "${BUILD_DIR}/print-objs.mk" print-objs \
