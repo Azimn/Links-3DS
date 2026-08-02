@@ -23,14 +23,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify environment
+      - name: Configure devkitPro PATH
         shell: bash
         run: |
           set -euo pipefail
           test -n "${DEVKITPRO:-}"
           test -n "${DEVKITARM:-}"
+          test -d "${DEVKITARM}/bin"
           test -f "${DEVKITARM}/3ds_rules"
+          printf '%s\n' "${DEVKITARM}/bin" >> "${GITHUB_PATH}"
+          printf '%s\n' "${DEVKITPRO}/tools/bin" >> "${GITHUB_PATH}"
+
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v arm-none-eabi-gcc
           arm-none-eabi-gcc --version
+          command -v 3dsxtool
+          command -v smdhtool
 
       - name: Validate helper scripts
         shell: bash
@@ -43,15 +54,26 @@ jobs:
           make clean
           make -j2
           test -s links-3ds.3dsx
-          file links-3ds.3dsx || true
-          sha256sum links-3ds.3dsx > links-3ds.3dsx.sha256
+          test -s links-3ds.elf
+
+      - name: Collect diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          cp links-3ds.3dsx artifacts/
+          cp links-3ds.elf artifacts/
+          if test -f links-3ds.map; then
+            cp links-3ds.map artifacts/
+          fi
+          sha256sum artifacts/links-3ds.3dsx artifacts/links-3ds.elf > artifacts/SHA256SUMS.txt
+          arm-none-eabi-size artifacts/links-3ds.elf > artifacts/size-report.txt
+          find artifacts -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
 
       - name: Upload hardware probe
         uses: actions/upload-artifact@v4
         with:
           name: links-3ds-milestone-0
-          path: |
-            links-3ds.3dsx
-            links-3ds.3dsx.sha256
+          path: artifacts/
           if-no-files-found: error
           retention-days: 30
