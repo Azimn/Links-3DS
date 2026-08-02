@@ -1,17 +1,38 @@
 #include "links_3ds_platform.h"
 
+#include <3ds.h>
+
 #include <string.h>
+
+#define LINKS_3DS_SOC_BUFFER_SIZE (1024u * 1024u)
 
 static links_3ds_event_sink_t active_sink;
 static bool platform_ready;
+static u32 *soc_buffer;
 
 bool links_3ds_platform_init(void)
 {
+    Result result;
+
     if (platform_ready) {
         return true;
     }
 
     if (!gfx_3ds_init()) {
+        return false;
+    }
+
+    soc_buffer = (u32 *)linearAlloc(LINKS_3DS_SOC_BUFFER_SIZE);
+    if (soc_buffer == NULL) {
+        gfx_3ds_exit();
+        return false;
+    }
+
+    result = socInit(soc_buffer, LINKS_3DS_SOC_BUFFER_SIZE);
+    if (R_FAILED(result)) {
+        linearFree(soc_buffer);
+        soc_buffer = NULL;
+        gfx_3ds_exit();
         return false;
     }
 
@@ -29,7 +50,15 @@ void links_3ds_platform_shutdown(void)
         return;
     }
 
+    links_3ds_platform_stop_input_timer();
     memset(&active_sink, 0, sizeof(active_sink));
+
+    socExit();
+    if (soc_buffer != NULL) {
+        linearFree(soc_buffer);
+        soc_buffer = NULL;
+    }
+
     gfx_3ds_exit();
     platform_ready = false;
 }
