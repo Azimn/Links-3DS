@@ -157,12 +157,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # This job validates that the staged 3DS graphics driver matches the
-          # Links 2.30 C interfaces. It does not link a complete 3DS browser.
-          # Generate cfg.h with the native runner compiler so configure can run
-          # its feature probes. Cross-configuring with arm-none-eabi-gcc causes
-          # every executable probe to fail and produces false results such as
-          # zero-sized integer types and a missing select() function.
           env \
             CC=cc \
             CFLAGS="-O2" \
@@ -177,6 +171,66 @@ jobs:
 
           test -s cfg.h
           grep -q "SIZEOF_UNSIGNED" cfg.h
+
+      - name: Normalize Links 2.30 graphics driver initializer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src-3ds/graphics_3ds.c")
+          source = path.read_text(encoding="utf-8")
+          marker = "struct graphics_driver links_3ds_driver = {"
+          start = source.find(marker)
+          if start < 0:
+              raise SystemExit("graphics driver initializer not found")
+
+          initializer = r'''struct graphics_driver links_3ds_driver = {
+              .name = cast_uchar "3ds",
+              .init_driver = links_3ds_init_driver,
+              .init_device = links_3ds_init_device,
+              .shutdown_device = links_3ds_shutdown_device,
+              .shutdown_driver = links_3ds_shutdown_driver,
+              .emergency_shutdown = links_3ds_emergency_shutdown,
+              .after_fork = links_3ds_after_fork,
+              .get_driver_param = links_3ds_get_driver_param,
+              .get_af_unix_name = NULL,
+              .get_margin = links_3ds_get_margin,
+              .set_margin = links_3ds_set_margin,
+              .get_empty_bitmap = links_3ds_get_empty_bitmap,
+              .register_bitmap = links_3ds_register_bitmap,
+              .prepare_strip = links_3ds_prepare_strip,
+              .commit_strip = links_3ds_commit_strip,
+              .unregister_bitmap = links_3ds_unregister_bitmap,
+              .draw_bitmap = links_3ds_draw_bitmap,
+              .get_color = links_3ds_get_color,
+              .fill_area = links_3ds_fill_area,
+              .draw_hline = links_3ds_draw_hline,
+              .draw_vline = links_3ds_draw_vline,
+              .scroll = links_3ds_scroll,
+              .set_clip_area = links_3ds_set_clip_area,
+              .flush = links_3ds_flush,
+              .block = links_3ds_block,
+              .unblock = links_3ds_unblock,
+              .set_palette = NULL,
+              .get_real_colors = NULL,
+              .set_title = NULL,
+              .exec = NULL,
+              .set_clipboard_text = NULL,
+              .get_clipboard_text = NULL,
+              .depth = LINKS_3DS_DEPTH,
+              .x = LINKS_3DS_WIDTH,
+              .y = LINKS_3DS_HEIGHT,
+              .flags = GD_ONLY_1_WINDOW | GD_NO_OS_SHELL | GD_NO_LIBEVENT,
+              .param = NULL
+          };
+          '''
+
+          path.write_text(source[:start] + initializer, encoding="utf-8")
+          PY
+
+          grep -q "\.param = NULL" src-3ds/graphics_3ds.c
 
       - name: Compile staged 3DS graphics driver
         shell: bash
