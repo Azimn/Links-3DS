@@ -7,6 +7,7 @@ BUILD_DIR="${ROOT_DIR}/build/browser-3ds"
 OBJ_DIR="${BUILD_DIR}/obj"
 LOG_DIR="${BUILD_DIR}/logs"
 MANIFEST="${BUILD_DIR}/links-objects.txt"
+UPSTREAM_OBJECT_LIST="${BUILD_DIR}/upstream-object-paths.txt"
 
 : "${DEVKITPRO:?DEVKITPRO must be set}"
 : "${DEVKITARM:?DEVKITARM must be set}"
@@ -126,21 +127,20 @@ UPSTREAM_CFLAGS=(
     -include unistd.h
 )
 
-OBJECTS=()
-while IFS= read -r object; do
-    base=${object%.o}
-    source="${UPSTREAM_DIR}/${base}.c"
-    output="${OBJ_DIR}/upstream/${object}"
+python3 "${ROOT_DIR}/scripts/compile-upstream-3ds.py" \
+    --manifest "${MANIFEST}" \
+    --source-dir "${UPSTREAM_DIR}" \
+    --object-dir "${OBJ_DIR}/upstream" \
+    --log-dir "${LOG_DIR}/upstream" \
+    --objects-out "${UPSTREAM_OBJECT_LIST}" \
+    --compiler arm-none-eabi-gcc \
+    -- "${UPSTREAM_CFLAGS[@]}"
 
-    if [[ ! -f "${source}" ]]; then
-        echo "Configured object has no direct C source: ${object}" >&2
-        exit 1
-    fi
-
-    mkdir -p "$(dirname -- "${output}")"
-    arm-none-eabi-gcc "${UPSTREAM_CFLAGS[@]}" -c "${source}" -o "${output}"
-    OBJECTS+=("${output}")
-done <"${MANIFEST}"
+mapfile -t OBJECTS <"${UPSTREAM_OBJECT_LIST}"
+if [[ ${#OBJECTS[@]} -eq 0 ]]; then
+    echo "No upstream objects were produced" >&2
+    exit 1
+fi
 
 PORT_SOURCES=(
     "${ROOT_DIR}/source/gfx_3ds.c"
