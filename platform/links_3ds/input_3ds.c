@@ -1,5 +1,7 @@
 #include "links_3ds_platform.h"
 
+#include <3ds.h>
+
 #define LINKS_3DS_POINTER_PRIMARY 1u
 #define LINKS_3DS_CPAD_DIVISOR 24
 
@@ -22,6 +24,13 @@ void links_3ds_platform_poll(void)
     int next_x;
     int next_y;
     bool moved;
+
+    if (!aptMainLoop()) {
+        if (sink->keyboard != NULL) {
+            sink->keyboard(sink->context, LINKS_3DS_KEY_CLOSE, 0u);
+        }
+        return;
+    }
 
     gfx_poll_input(&input);
     gfx_get_cursor_pos(&cursor_x, &cursor_y);
