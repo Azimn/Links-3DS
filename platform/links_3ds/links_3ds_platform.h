@@ -6,6 +6,10 @@
 
 #include "../../source/gfx_3ds.h"
 
+#define LINKS_3DS_SCREEN_WIDTH 400
+#define LINKS_3DS_SCREEN_HEIGHT 240
+#define LINKS_3DS_INPUT_INTERVAL_MS 16
+
 typedef enum links_3ds_key {
     LINKS_3DS_KEY_NONE = 0,
     LINKS_3DS_KEY_UP,
@@ -38,9 +42,16 @@ typedef struct links_3ds_event_sink {
                     uint32_t buttons);
 } links_3ds_event_sink_t;
 
+typedef void (*links_3ds_schedule_fn)(int milliseconds,
+                                      void (*callback)(void *),
+                                      void *data);
+
 bool links_3ds_platform_init(void);
 void links_3ds_platform_shutdown(void);
 void links_3ds_platform_set_event_sink(const links_3ds_event_sink_t *sink);
+const links_3ds_event_sink_t *links_3ds_platform_get_event_sink(void);
+void links_3ds_platform_set_scheduler(links_3ds_schedule_fn scheduler);
+void links_3ds_platform_start_input_timer(void);
 void links_3ds_platform_poll(void);
 void links_3ds_platform_timer_callback(void *unused);
 
