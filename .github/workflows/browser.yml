@@ -1,4 +1,4 @@
-name: Build Links Browser 3DSX
+name: Build Links Browser 3DSX and CIA
 
 on:
   push:
@@ -7,8 +7,11 @@ on:
     paths:
       - '.github/workflows/browser.yml'
       - 'scripts/build-browser-3ds.sh'
+      - 'scripts/build-cia.sh'
+      - 'scripts/generate-cia-assets.py'
       - 'scripts/prepare-graphics-3ds.py'
       - 'scripts/fetch-links.sh'
+      - 'cia/**'
       - 'source/**'
       - 'src-3ds/**'
       - 'platform/links_3ds/**'
@@ -19,8 +22,11 @@ on:
     paths:
       - '.github/workflows/browser.yml'
       - 'scripts/build-browser-3ds.sh'
+      - 'scripts/build-cia.sh'
+      - 'scripts/generate-cia-assets.py'
       - 'scripts/prepare-graphics-3ds.py'
       - 'scripts/fetch-links.sh'
+      - 'cia/**'
       - 'source/**'
       - 'src-3ds/**'
       - 'platform/links_3ds/**'
@@ -57,6 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           command -v cc
+          command -v curl
           command -v python3
           command -v arm-none-eabi-gcc
           command -v arm-none-eabi-size
@@ -69,8 +76,10 @@ jobs:
         run: |
           set -euo pipefail
           bash -n scripts/build-browser-3ds.sh
+          bash -n scripts/build-cia.sh
           sh -n scripts/fetch-links.sh
           python3 -m py_compile scripts/prepare-graphics-3ds.py
+          python3 -m py_compile scripts/generate-cia-assets.py
 
       - name: Prepare verified 3DS driver source
         shell: bash
@@ -88,17 +97,27 @@ jobs:
           chmod +x scripts/build-browser-3ds.sh scripts/fetch-links.sh
           scripts/build-browser-3ds.sh 2>&1 | tee browser-build.log
 
+      - name: Build installable CIA
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build-cia.sh
+          scripts/build-cia.sh 2>&1 | tee cia-build.log
+
       - name: Verify browser outputs
         shell: bash
         run: |
           set -euo pipefail
           test -s build/browser-3ds/links-3ds-browser.elf
           test -s build/browser-3ds/links-3ds-browser.3dsx
+          test -s build/browser-3ds/links-3ds-browser.cia
           test -s build/browser-3ds/links-objects.txt
           test -s build/browser-3ds/size-report.txt
           test -s build/browser-3ds/SHA256SUMS.txt
+          test -s build/browser-3ds/CIA-SHA256SUMS.txt
           cat build/browser-3ds/size-report.txt
           cat build/browser-3ds/SHA256SUMS.txt
+          cat build/browser-3ds/CIA-SHA256SUMS.txt
 
       - name: Package Homebrew Launcher test layout
         shell: bash
@@ -118,13 +137,15 @@ jobs:
           name: links-3ds-milestone-1b-browser
           path: |
             browser-build.log
+            cia-build.log
             build/browser-3ds/links-objects.txt
             build/browser-3ds/logs/
             build/browser-3ds/*.map
             build/browser-3ds/*.elf
             build/browser-3ds/*.3dsx
-            build/browser-3ds/size-report.txt
-            build/browser-3ds/SHA256SUMS.txt
+            build/browser-3ds/*.cia
+            build/browser-3ds/*SHA256SUMS.txt
+            build/browser-3ds/cia/
             build/browser-3ds/package/
           if-no-files-found: warn
           retention-days: 30
