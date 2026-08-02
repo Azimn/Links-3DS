@@ -755,6 +755,46 @@ Generated from the verified upstream archive.
 2309-
 2310-/* dither.c */
 2311-
+2312-extern int slow_fpu;	/* -1 --- don't know, 0 --- no, 1 --- yes */
+2313-
+2314-/* Dithering functions (for blocks of pixels being dithered into bitmaps) */
+2315-void dither(unsigned short *in, struct bitmap *out);
+2316-int *dither_start(unsigned short *in, struct bitmap *out);
+2317-void dither_restart(unsigned short *in, struct bitmap *out, int *dregs);
+2318-extern void (*round_fn)(unsigned short *my_restrict in, struct bitmap *out);
+2319-
+2320-long (*get_color_fn(int depth))(int rgb);
+2321-void init_dither(int depth);
+2322-void round_color_sRGB_to_48(unsigned short *my_restrict red, unsigned short *my_restrict green,
+2323-		unsigned short *my_restrict blue, int rgb);
+2324-
+2325-void q_palette(unsigned size, unsigned color, unsigned scale, unsigned rgb[3]);
+2326-double rgb_distance(int r1, int g1, int b1, int r2, int g2, int b2);
+2327-
+2328-void free_dither(void);
+2329-
+2330-/* freetype.c */
+2331-
+2332-#ifdef HAVE_FREETYPE
+2333-
+2334-struct freetype_face *freetype_flags_to_face(int fflags);
+2335-
+2336-#define sizeof_freetype_cache	1024
+2337-extern struct lru_entry **freetype_cache;
+2338-
+2339-int freetype_load_metric_cached(struct style *st, int char_number, int *xp, int y);
+2340-int freetype_type_character(struct style *st, int char_number, unsigned char **dest, int *x, int y);
+2341-
+2342-struct freetype_face *freetype_get_font(unsigned char *path);
+2343-void freetype_free_font(struct freetype_face *face);
+2344-unsigned char *freetype_get_allocated_font_name(struct style *st);
+2345-
+2346-void freetype_reload(void);
+2347-void freetype_init(void);
+2348-void freetype_done(void);
+2349-
+2350-void add_freetype_version(unsigned char **s, int *l);
+2351-
 --
 2488-	unsigned char *title;
 2489-
@@ -937,6 +977,46 @@ Generated from the verified upstream archive.
 2666-
 2667-void unhandle_terminal_signals(struct terminal *term);
 2668-int attach_terminal(int, int, int, void *, int);
+2669-#ifdef G
+2670-int attach_g_terminal(unsigned char *, void *, int);
+2671-void gfx_connection(int);
+2672-#endif
+2673-
+2674-/* objreq.c */
+2675-
+2676-#define O_WAITING	0
+2677-#define O_LOADING	1
+2678-#define O_FAILED	-1
+2679-#define O_INCOMPLETE	-2
+2680-#define O_OK		-3
+2681-
+2682-struct object_request {
+2683-	list_entry_1st
+2684-	int refcount;
+2685-	tcount count;
+2686-	tcount term;
+2687-	struct status stat;
+2688-	struct cache_entry *ce_internal;
+2689-	struct cache_entry *ce;
+2690-	unsigned char *orig_url;
+2691-	unsigned char *url;
+2692-	unsigned char *prev_url;	/* allocated string with referrer or NULL */
+2693-	unsigned char *goto_position;
+2694-	int pri;
+2695-	int cache;
+2696-	void (*upcall)(struct object_request *, void *);
+2697-	void *data;
+2698-	int redirect_cnt;
+2699-	int state;
+2700-#define HOLD_AUTH	1
+2701-#define HOLD_CERT	2
+2702-	int hold;
+2703-	int dont_print_error;
+2704-	struct timer *timer;
+2705-
+2706-	off_t last_bytes;
+2707-
+2708-	uttime last_update;
 --
 4512-
 4513-
@@ -1044,6 +1124,46 @@ Generated from the verified upstream archive.
 4615-#define P_LISTMASK	7
 4616-#define P_COMPACT	8
 4617-
+4618-struct par_attrib {
+4619-	int align;
+4620-	int leftmargin;
+4621-	int rightmargin;
+4622-	int width;
+4623-	int list_level;
+4624-	unsigned list_number;
+4625-	int dd_margin;
+4626-	int flags;
+4627-	struct rgb bgcolor;
+4628-	int implicit_pre_wrap;
+4629-};
+4630-
+4631-struct html_element {
+4632-	list_entry_1st
+4633-	struct text_attrib attr;
+4634-	struct par_attrib parattr;
+4635-#define INVISIBLE		1
+4636-#define INVISIBLE_SCRIPT	2
+4637-#define INVISIBLE_STYLE		3
+4638-	int invisible;
+4639-	unsigned char *name;
+4640-	int namelen;
+4641-	unsigned char *options;
+4642-	int linebreak;
+4643-	int dontkill;
+4644-	struct frameset_desc *frameset;
+4645-	list_entry_last
+4646-};
+4647-
+4648-extern int get_attr_val_nl;
+4649-
+4650-extern struct list_head html_stack;
+4651-extern int line_breax;
+4652-
+4653-extern int html_format_changed;
+4654-
+4655-extern unsigned char *startf;
+4656-extern unsigned char *eofff;
+4657-
 --
 4854-int is_in_area(struct map_area *a, int x, int y);
 4855-
@@ -1150,6 +1270,140 @@ Generated from the verified upstream archive.
 4956-extern int memory_cache_size;
 4957-extern int image_cache_size;
 4958-extern int font_cache_size;
+4959-extern int aggressive_cache;
+4960-
+4961-struct ipv6_options {
+4962-	int addr_preference;
+4963-};
+4964-
+4965-#define ADDR_PREFERENCE_DEFAULT		0
+4966-#define ADDR_PREFERENCE_IPV4		1
+4967-#define ADDR_PREFERENCE_IPV6		2
+4968-#define ADDR_PREFERENCE_IPV4_ONLY	3
+4969-#define ADDR_PREFERENCE_IPV6_ONLY	4
+4970-
+4971-extern struct ipv6_options ipv6_options;
+4972-
+4973-#define REFERER_NONE			0
+4974-#define REFERER_SAME_URL		1
+4975-#define REFERER_FAKE			2
+4976-#define REFERER_REAL			3
+4977-#define REFERER_REAL_SAME_SERVER	4
+4978-
+4979-struct proxies {
+4980-	unsigned char http_proxy[MAX_STR_LEN];
+4981-	unsigned char ftp_proxy[MAX_STR_LEN];
+4982-	unsigned char https_proxy[MAX_STR_LEN];
+4983-	unsigned char socks_proxy[MAX_STR_LEN];
+4984-	unsigned char dns_append[MAX_STR_LEN];
+4985-	unsigned char no_proxy[MAX_STR_LEN];
+4986-	int only_proxies;
+4987-};
+4988-
+4989-extern struct proxies proxies;
+4990-
+4991-#define SSL_ACCEPT_INVALID_CERTIFICATE	0
+4992-#define SSL_WARN_ON_INVALID_CERTIFICATE	1
+4993-#define SSL_REJECT_INVALID_CERTIFICATE	2
+4994-
+4995-struct ssl_options {
+4996-	int certificates;
+4997-	int built_in_certificates;
+4998-	unsigned char client_cert_key[MAX_STR_LEN];
+
+===== links.h: keyboard_handler =====
+1910-	/* Only user is allowed to write here, driver inits to zero's */
+1911-	void *user_data;
+1912-	void (*redraw_handler)(struct graphics_device *dev, struct rect *r);
+1913-	void (*resize_handler)(struct graphics_device *dev);
+1914:	void (*keyboard_handler)(struct graphics_device *dev, int key, int flags);
+1915-	void (*mouse_handler)(struct graphics_device *dev, int x, int y, int buttons);
+1916-	void (*extra_handler)(struct graphics_device *dev, int type, unsigned char *string);
+1917-};
+1918-
+1919-struct driver_param;
+1920-
+1921-struct graphics_driver {
+1922-	unsigned char *name;
+1923-	unsigned char *(*init_driver)(unsigned char *param, unsigned char *display);	/* param is get from get_driver_param and saved into configure file */
+1924-
+1925-	/* Creates new device and returns pointer to it */
+1926-	struct graphics_device *(*init_device)(void);
+1927-
+1928-	/* Destroys the device */
+1929-	void (*shutdown_device)(struct graphics_device *dev);
+1930-
+1931-	void (*shutdown_driver)(void);
+1932-
+1933-	void (*emergency_shutdown)(void);
+1934-
+1935-	void (*after_fork)(void);
+1936-
+1937-	unsigned char *(*get_driver_param)(void);	/* returns allocated string with parameter given to init_driver function */
+1938-	unsigned char *(*get_af_unix_name)(void);
+1939-
+1940-	void (*get_margin)(int *left, int *right, int *top, int *bottom);
+1941-	int (*set_margin)(int left, int right, int top, int bottom);
+1942-
+1943-	/* dest must have x and y filled in when get_empty_bitmap is called */
+1944-	int (*get_empty_bitmap)(struct bitmap *dest);
+1945-
+1946-	void (*register_bitmap)(struct bitmap *bmp);
+1947-
+1948-	void *(*prepare_strip)(struct bitmap *bmp, int top, int lines);
+1949-	void (*commit_strip)(struct bitmap *bmp, int top, int lines);
+1950-
+1951-	/* Must not touch x and y. Suitable for re-registering. */
+1952-	void (*unregister_bitmap)(struct bitmap *bmp);
+1953-	void (*draw_bitmap)(struct graphics_device *dev, struct bitmap *hndl, int x, int y);
+1954-
+
+===== links.h: mouse_handler =====
+1911-	void *user_data;
+1912-	void (*redraw_handler)(struct graphics_device *dev, struct rect *r);
+1913-	void (*resize_handler)(struct graphics_device *dev);
+1914-	void (*keyboard_handler)(struct graphics_device *dev, int key, int flags);
+1915:	void (*mouse_handler)(struct graphics_device *dev, int x, int y, int buttons);
+1916-	void (*extra_handler)(struct graphics_device *dev, int type, unsigned char *string);
+1917-};
+1918-
+1919-struct driver_param;
+1920-
+1921-struct graphics_driver {
+1922-	unsigned char *name;
+1923-	unsigned char *(*init_driver)(unsigned char *param, unsigned char *display);	/* param is get from get_driver_param and saved into configure file */
+1924-
+1925-	/* Creates new device and returns pointer to it */
+1926-	struct graphics_device *(*init_device)(void);
+1927-
+1928-	/* Destroys the device */
+1929-	void (*shutdown_device)(struct graphics_device *dev);
+1930-
+1931-	void (*shutdown_driver)(void);
+1932-
+1933-	void (*emergency_shutdown)(void);
+1934-
+1935-	void (*after_fork)(void);
+1936-
+1937-	unsigned char *(*get_driver_param)(void);	/* returns allocated string with parameter given to init_driver function */
+1938-	unsigned char *(*get_af_unix_name)(void);
+1939-
+1940-	void (*get_margin)(int *left, int *right, int *top, int *bottom);
+1941-	int (*set_margin)(int left, int right, int top, int bottom);
+1942-
+1943-	/* dest must have x and y filled in when get_empty_bitmap is called */
+1944-	int (*get_empty_bitmap)(struct bitmap *dest);
+1945-
+1946-	void (*register_bitmap)(struct bitmap *bmp);
+1947-
+1948-	void *(*prepare_strip)(struct bitmap *bmp, int top, int lines);
+1949-	void (*commit_strip)(struct bitmap *bmp, int top, int lines);
+1950-
+1951-	/* Must not touch x and y. Suitable for re-registering. */
+1952-	void (*unregister_bitmap)(struct bitmap *bmp);
+1953-	void (*draw_bitmap)(struct graphics_device *dev, struct bitmap *hndl, int x, int y);
+1954-
+1955-	/* Input into get_color has gamma 1/display_gamma.
 
 ===== links.h: struct bitmap =====
 1879-/* Bitmap is allowed to pass only to that driver from which was obtained.
@@ -1489,6 +1743,274 @@ Generated from the verified upstream archive.
 3286-	struct cached_image *cimg;
 3287-	struct additional_file *af;
 
+===== links.h: install_timer =====
+1153-void unregister_bottom_half(void (*)(void *), void *);
+1154-void check_bottom_halves(void);
+1155-void add_event_string(unsigned char **, int *, struct terminal *);
+1156-struct timer;
+1157:struct timer *install_timer(uttime, void (*)(void *), void *);
+1158-void kill_timer(struct timer *);
+1159-int verify_handle(int);
+1160-#define H_READ	0
+1161-#define H_WRITE	1
+1162-void (*get_handler(int, int))(void *);
+1163-void *get_handler_data(int);
+1164-extern unsigned char *sh_file;
+1165-extern int sh_line;
+1166-void set_handlers_file_line(int, void (*)(void *), void (*)(void *), void *);
+1167-#define set_handlers(a, b, c, d)	(sh_file = (unsigned char *)__FILE__, sh_line = __LINE__, set_handlers_file_line(a, b, c, d))
+1168-void clear_events(int, int);
+1169-extern int signal_pipe[2];
+1170-void install_signal_handler(int, void (*)(void *), void *, int);
+1171-void interruptible_signal(int sig, int in);
+1172-void block_signals(int except1, int except2);
+1173-void unblock_signals(void);
+1174-void set_sigcld(void);
+1175-#ifdef HAVE_OPENMP
+1176-int omp_start(void);
+1177-void omp_end(void);
+1178-#else
+1179-#define omp_start()	1
+1180-#define omp_end()	do { } while (0)
+1181-#endif
+1182-
+1183-/* dns.c */
+1184-
+1185-#define MAX_ADDRESSES		64
+1186-
+1187-struct host_address {
+1188-	int af;
+1189-	unsigned char addr[16];
+1190-	unsigned scope_id;
+1191-};
+1192-
+1193-struct lookup_result {
+1194-	int n;
+1195-	struct host_address a[MAX_ADDRESSES];
+1196-};
+1197-
+1198-struct lookup_state {
+1199-	struct lookup_result addr;
+1200-	int addr_index;
+1201-	int dont_try_more_servers;
+1202-	int socks_port;
+1203-	int target_port;
+1204-};
+1205-
+1206-struct dnsquery_doh;
+1207-
+
+===== links.h: kill_timer =====
+1154-void check_bottom_halves(void);
+1155-void add_event_string(unsigned char **, int *, struct terminal *);
+1156-struct timer;
+1157-struct timer *install_timer(uttime, void (*)(void *), void *);
+1158:void kill_timer(struct timer *);
+1159-int verify_handle(int);
+1160-#define H_READ	0
+1161-#define H_WRITE	1
+1162-void (*get_handler(int, int))(void *);
+1163-void *get_handler_data(int);
+1164-extern unsigned char *sh_file;
+1165-extern int sh_line;
+1166-void set_handlers_file_line(int, void (*)(void *), void (*)(void *), void *);
+1167-#define set_handlers(a, b, c, d)	(sh_file = (unsigned char *)__FILE__, sh_line = __LINE__, set_handlers_file_line(a, b, c, d))
+1168-void clear_events(int, int);
+1169-extern int signal_pipe[2];
+1170-void install_signal_handler(int, void (*)(void *), void *, int);
+1171-void interruptible_signal(int sig, int in);
+1172-void block_signals(int except1, int except2);
+1173-void unblock_signals(void);
+1174-void set_sigcld(void);
+1175-#ifdef HAVE_OPENMP
+1176-int omp_start(void);
+1177-void omp_end(void);
+1178-#else
+1179-#define omp_start()	1
+1180-#define omp_end()	do { } while (0)
+1181-#endif
+1182-
+1183-/* dns.c */
+1184-
+1185-#define MAX_ADDRESSES		64
+1186-
+1187-struct host_address {
+1188-	int af;
+
+===== links.h: KBD_UP =====
+1756-#define KBD_TAB		-0x102
+1757-#define KBD_ESC		-0x103
+1758-#define KBD_LEFT	-0x104
+1759-#define KBD_RIGHT	-0x105
+1760:#define KBD_UP		-0x106
+1761-#define KBD_DOWN	-0x107
+1762-#define KBD_INS		-0x108
+1763-#define KBD_DEL		-0x109
+1764-#define KBD_HOME	-0x10a
+1765-#define KBD_END		-0x10b
+1766-#define KBD_PAGE_UP	-0x10c
+1767-#define KBD_PAGE_DOWN	-0x10d
+1768-#define KBD_MENU	-0x10e
+1769-#define KBD_STOP	-0x10f
+1770-
+1771-#define KBD_F1		-0x120
+1772-#define KBD_F2		-0x121
+1773-#define KBD_F3		-0x122
+1774-#define KBD_F4		-0x123
+1775-#define KBD_F5		-0x124
+1776-#define KBD_F6		-0x125
+1777-#define KBD_F7		-0x126
+1778-#define KBD_F8		-0x127
+1779-#define KBD_F9		-0x128
+1780-#define KBD_F10		-0x129
+1781-#define KBD_F11		-0x12a
+1782-#define KBD_F12		-0x12b
+1783-
+1784-#define KBD_UNDO	-0x140
+1785-#define KBD_REDO	-0x141
+1786-#define KBD_FIND	-0x142
+1787-#define KBD_HELP	-0x143
+1788-#define KBD_COPY	-0x144
+1789-#define KBD_PASTE	-0x145
+1790-#define KBD_CUT		-0x146
+1791-#define KBD_PROPS	-0x147
+1792-#define KBD_FRONT	-0x148
+1793-#define KBD_OPEN	-0x149
+1794-#define KBD_BACK	-0x14a
+1795-#define KBD_FORWARD	-0x14b
+1796-#define KBD_RELOAD	-0x14c
+1797-#define KBD_BOOKMARKS	-0x14d
+1798-#define KBD_SELECT	-0x14e
+1799-
+1800-#define KBD_ESCAPE_MENU(x)	((x) <= KBD_F1 && (x) > KBD_CTRL_C)
+1801-
+1802-#define KBD_CTRL_C	-0x200
+1803-#define KBD_CLOSE	-0x201
+1804-
+1805-#define KBD_SHIFT	1
+1806-#define KBD_CTRL	2
+1807-#define KBD_ALT		4
+1808-#define KBD_PASTING	8
+1809-
+1810-void handle_trm(int, int, int, int, int, void *, int);
+1811-void free_all_itrms(void);
+1812-void dispatch_special(unsigned char *);
+1813-void kbd_ctrl_c(void);
+1814-int is_blocked(void);
+1815-
+1816-struct os2_key {
+1817-	int x, y;
+1818-};
+1819-
+1820-#if defined(OS2) || defined(DOS)
+1821-extern struct os2_key os2xtd[256];
+1822-#endif
+1823-
+1824-struct itrm;
+1825-
+1826-extern unsigned char init_seq[];
+1827-extern unsigned char init_seq_x_mouse[];
+1828-extern unsigned char init_seq_tw_mouse[];
+1829-extern unsigned char init_set_xterm[];
+1830-extern unsigned char term_seq[];
+1831-extern unsigned char term_seq_x_mouse[];
+1832-extern unsigned char term_seq_tw_mouse[];
+1833-extern unsigned char term_seq_xterm[];
+1834-
+1835-#if defined(GRDRV_SVGALIB) || defined(GRDRV_FB) || defined(GRDRV_GRX)
+1836-#define GRDRV_VIRTUAL_DEVICES
+1837-#endif
+1838-
+1839-#ifdef GRDRV_VIRTUAL_DEVICES
+1840-extern int kbd_set_raw;
+
+===== links.h: B_LEFT =====
+1728-
+1729-/* kbd.c */
+1730-
+1731-#define BM_BUTT		15
+1732:#define B_LEFT		0
+1733-#define B_MIDDLE	1
+1734-#define B_RIGHT		2
+1735-#define B_FOURTH	3
+1736-#define B_FIFTH		4
+1737-#define B_SIXTH		5
+1738-#define B_WHEELUP	8
+1739-#define B_WHEELDOWN	9
+1740-#define B_WHEELUP1	10
+1741-#define B_WHEELDOWN1	11
+1742-#define B_WHEELLEFT	12
+1743-#define B_WHEELRIGHT	13
+1744-#define B_WHEELLEFT1	14
+1745-#define B_WHEELRIGHT1	15
+1746-#define BM_IS_WHEEL(b)	((b) & 8)
+1747-
+1748-#define BM_ACT		48
+1749-#define B_DOWN		0
+1750-#define B_UP		16
+1751-#define B_DRAG		32
+1752-#define B_MOVE		48
+1753-
+1754-#define KBD_ENTER	-0x100
+1755-#define KBD_BS		-0x101
+1756-#define KBD_TAB		-0x102
+1757-#define KBD_ESC		-0x103
+1758-#define KBD_LEFT	-0x104
+1759-#define KBD_RIGHT	-0x105
+1760-#define KBD_UP		-0x106
+1761-#define KBD_DOWN	-0x107
+1762-#define KBD_INS		-0x108
+1763-#define KBD_DEL		-0x109
+1764-#define KBD_HOME	-0x10a
+1765-#define KBD_END		-0x10b
+1766-#define KBD_PAGE_UP	-0x10c
+1767-#define KBD_PAGE_DOWN	-0x10d
+1768-#define KBD_MENU	-0x10e
+1769-#define KBD_STOP	-0x10f
+1770-
+1771-#define KBD_F1		-0x120
+1772-#define KBD_F2		-0x121
+1773-#define KBD_F3		-0x122
+1774-#define KBD_F4		-0x123
+1775-#define KBD_F5		-0x124
+1776-#define KBD_F6		-0x125
+1777-#define KBD_F7		-0x126
+1778-#define KBD_F8		-0x127
+1779-#define KBD_F9		-0x128
+1780-#define KBD_F10		-0x129
+1781-#define KBD_F11		-0x12a
+1782-#define KBD_F12		-0x12b
+1783-
+1784-#define KBD_UNDO	-0x140
+1785-#define KBD_REDO	-0x141
+1786-#define KBD_FIND	-0x142
+1787-#define KBD_HELP	-0x143
+1788-#define KBD_COPY	-0x144
+1789-#define KBD_PASTE	-0x145
+1790-#define KBD_CUT		-0x146
+1791-#define KBD_PROPS	-0x147
+1792-#define KBD_FRONT	-0x148
+1793-#define KBD_OPEN	-0x149
+1794-#define KBD_BACK	-0x14a
+1795-#define KBD_FORWARD	-0x14b
+1796-#define KBD_RELOAD	-0x14c
+1797-#define KBD_BOOKMARKS	-0x14d
+1798-#define KBD_SELECT	-0x14e
+1799-
+1800-#define KBD_ESCAPE_MENU(x)	((x) <= KBD_F1 && (x) > KBD_CTRL_C)
+1801-
+1802-#define KBD_CTRL_C	-0x200
+1803-#define KBD_CLOSE	-0x201
+1804-
+1805-#define KBD_SHIFT	1
+1806-#define KBD_CTRL	2
+1807-#define KBD_ALT		4
+1808-#define KBD_PASTING	8
+1809-
+1810-void handle_trm(int, int, int, int, int, void *, int);
+1811-void free_all_itrms(void);
+1812-void dispatch_special(unsigned char *);
+
 ===== drivers.c: graphics_drivers =====
 46- * On other systems you must test first X and then svgalib (because svgalib
 47- *	would work in X too and it's undesirable).
@@ -1783,6 +2305,46 @@ Generated from the verified upstream archive.
 200-
 201-static int abort_all_keepalive_connections(void)
 202-{
+203-	int did_something = 0;
+204-	while (!list_empty(keepalive_connections)) {
+205-		del_keepalive_socket(list_struct(keepalive_connections.next, struct k_conn));
+206-		did_something = 1;
+207-	}
+208-	check_keepalive_connections();
+209-	return did_something;
+210-}
+211-
+212-static void free_connection_data(struct connection *c)
+213-{
+214-	struct h_conn *h;
+215-	int rs;
+216-	if (c->sock1 != -1) set_handlers(c->sock1, NULL, NULL, NULL);
+217-	close_socket(&c->sock2);
+218-	if (c->pid) {
+219-		EINTRLOOP(rs, kill(c->pid, SIGINT));
+220-		EINTRLOOP(rs, kill(c->pid, SIGTERM));
+221-		EINTRLOOP(rs, kill(c->pid, SIGKILL));
+222-		c->pid = 0;
+223-	}
+224-	if (!c->running) {
+225-		internal_error("connection already suspended");
+226-	}
+227-	c->running = 0;
+228-	if (c->dnsquery) kill_dns_request(&c->dnsquery);
+229-	if (c->buffer) {
+230-		mem_free(c->buffer);
+231-		c->buffer = NULL;
+232-	}
+233-	if (c->newconn) {
+234-		mem_free(c->newconn);
+235-		c->newconn = NULL;
+236-	}
+237-	if (c->info) {
+238-		mem_free(c->info);
+239-		c->info = NULL;
+240-	}
+241-	clear_connection_timeout(c);
+242-	if (!c->doh) {
 --
 398-			del_keepalive_socket(list_struct(keepalive_connections.prev, struct k_conn));
 399-		else
@@ -1869,6 +2431,46 @@ Generated from the verified upstream archive.
 480-				goto no_match;
 481-			if (l < host_l && host[host_l - l - 1] != '.')
 482-				goto no_match;
+483-			if (casecmp(np, host + (host_l - l), l))
+484-				goto no_match;
+485-			return 1;
+486-no_match:
+487-			if (!np[l])
+488-				break;
+489-			np += l + 1;
+490-		}
+491-	}
+492-	return 0;
+493-}
+494-
+495-int is_noproxy_url(unsigned char *url)
+496-{
+497-	unsigned char *host = get_host_name(url);
+498-	int r = is_noproxy_host(host);
+499-	mem_free(host);
+500-	return r;
+501-}
+502-
+503-static void run_connection(struct connection *c)
+504-{
+505-	struct h_conn *hc;
+506-	void (*func)(struct connection *);
+507-	if (c->running) {
+508-		internal_error("connection already running");
+509-		return;
+510-	}
+511-
+512-	memset(&c->last_lookup_state, 0, sizeof(struct lookup_state));
+513-
+514-	if (is_noproxy_url(remove_proxy_prefix(c->url))) {
+515-		c->socks_proxy[0] = 0;
+516-		c->dns_append[0] = 0;
+517-	} else {
+518-		safe_strncpy(c->socks_proxy, proxies.socks_proxy, sizeof c->socks_proxy);
+519-		safe_strncpy(c->dns_append, proxies.dns_append, sizeof c->dns_append);
+520-	}
+521-
+522-	if (proxies.only_proxies && !is_proxy_url(c->url) && casecmp(c->url, cast_uchar "data:", 5) && (!*c->socks_proxy || url_bypasses_socks(c->url))) {
 --
 1068-
 1069-static void connection_timeout_1(void *c_)
@@ -1973,6 +2575,277 @@ Generated from the verified upstream archive.
 1168-	}
 1169-}
 1170-
+1171-int get_blacklist_flags(unsigned char *host)
+1172-{
+1173-	struct blacklist_entry *b;
+1174-	struct list_head *lb;
+1175-	foreach(struct blacklist_entry, b, lb, blacklist) if (!casestrcmp(host, b->host)) return b->flags;
+1176-	return 0;
+1177-}
+1178-
+1179-void free_blacklist(void)
+1180-{
+1181-	free_list(struct blacklist_entry, blacklist);
+1182-}
+
+===== sched.c: kill_timer =====
+147-			if (connection_disappeared(c, count)) return;
+148-		}
+149-	} else {
+150-		struct remaining_info *r = &c->prg;
+151:		if (r->timer != NULL) kill_timer(r->timer), r->timer = NULL;
+152-	}
+153-	foreach(struct status, stat, lstat, c->statuss) {
+154-		stat->state = state;
+155-		stat->prev_error = c->prev_error;
+156-	}
+157-	if (state >= 0) send_connection_info(c);
+158-}
+159-
+160-static struct k_conn *is_host_on_keepalive_list(struct connection *c)
+161-{
+162-	unsigned char *ho;
+163-	int po;
+164-	void (*ph)(struct connection *);
+165-	struct k_conn *h;
+166-	struct list_head *lh;
+167-	if ((po = get_port(c->url)) == -1) return NULL;
+168-	if (!(ph = get_protocol_handle(c->url))) return NULL;
+169-	if (!(ho = get_keepalive_id(c->url))) return NULL;
+170-	foreach(struct k_conn, h, lh, keepalive_connections)
+171-		if (h->protocol == ph && h->port == po && !strcmp(cast_const_char h->host, cast_const_char ho)) {
+172-			mem_free(ho);
+173-			return h;
+174-		}
+175-	mem_free(ho);
+176-	return NULL;
+177-}
+178-
+179-int get_keepalive_socket(struct connection *c, int *protocol_data)
+180-{
+181-	struct k_conn *k;
+182-	int cc;
+183-	if (c->tries > 0 || c->unrestartable) return -1;
+184-	if (!(k = is_host_on_keepalive_list(c))) return -1;
+185-	cc = k->conn;
+186-	if (protocol_data) *protocol_data = k->protocol_data;
+187-#ifdef HAVE_SSL
+188-	freeSSL(c->ssl);
+189-	c->ssl = k->ssl;
+190-#endif
+191-	memcpy(&c->last_lookup_state, &k->last_lookup_state, sizeof(struct lookup_state));
+192-	del_from_list(k);
+193-	mem_free(k->host);
+194-	mem_free(k);
+195-	c->sock1 = cc;
+196-	if (max_tries == 1) c->tries = -1;
+197-	c->keepalive = 1;
+198-	return 0;
+199-}
+200-
+201-static int abort_all_keepalive_connections(void)
+202-{
+203-	int did_something = 0;
+204-	while (!list_empty(keepalive_connections)) {
+205-		del_keepalive_socket(list_struct(keepalive_connections.next, struct k_conn));
+206-		did_something = 1;
+207-	}
+208-	check_keepalive_connections();
+209-	return did_something;
+210-}
+211-
+212-static void free_connection_data(struct connection *c)
+213-{
+214-	struct h_conn *h;
+215-	int rs;
+216-	if (c->sock1 != -1) set_handlers(c->sock1, NULL, NULL, NULL);
+217-	close_socket(&c->sock2);
+218-	if (c->pid) {
+219-		EINTRLOOP(rs, kill(c->pid, SIGINT));
+220-		EINTRLOOP(rs, kill(c->pid, SIGTERM));
+221-		EINTRLOOP(rs, kill(c->pid, SIGKILL));
+222-		c->pid = 0;
+223-	}
+224-	if (!c->running) {
+225-		internal_error("connection already suspended");
+226-	}
+227-	c->running = 0;
+228-	if (c->dnsquery) kill_dns_request(&c->dnsquery);
+229-	if (c->buffer) {
+230-		mem_free(c->buffer);
+231-		c->buffer = NULL;
+--
+384-	struct list_head *lkc;
+385-	uttime ct = get_absolute_time();
+386-	int p = 0;
+387-	if (keepalive_timeout != NULL)
+388:		kill_timer(keepalive_timeout), keepalive_timeout = NULL;
+389-	foreach(struct k_conn, kc, lkc, keepalive_connections) {
+390-		if (can_read(kc->conn) || ct - kc->add_time > kc->timeout) {
+391-			lkc = lkc->prev;
+392-			del_keepalive_socket(kc);
+393-		} else
+394-			p++;
+395-	}
+396-	for (; p > MAX_KEEPALIVE_CONNECTIONS; p--)
+397-		if (!list_empty(keepalive_connections))
+398-			del_keepalive_socket(list_struct(keepalive_connections.prev, struct k_conn));
+399-		else
+400-			internal_error("keepalive list empty");
+401-	if (!list_empty(keepalive_connections))
+402-		keepalive_timeout = install_timer(KEEPALIVE_CHECK_TIME, keepalive_timer, NULL);
+403-}
+404-
+405-static void add_to_queue(struct connection *c)
+406-{
+407-	struct connection *cc;
+408-	struct list_head *lcc;
+409-	int pri = getpri(c);
+410-	foreach(struct connection, cc, lcc, queue) if (getpri(cc) > pri) break;
+411-	add_before_list_entry(lcc, &c->list_entry);
+412-}
+413-
+414-static void sort_queue(void)
+415-{
+416-	struct connection *c, *n;
+417-	struct list_head *lc;
+418-	int swp;
+419-	do {
+420-		swp = 0;
+421-		foreach(struct connection, c, lc, queue) if (c->list_entry.next != &queue) {
+422-			n = list_struct(c->list_entry.next, struct connection);
+423-			if (getpri(n) < getpri(c)) {
+424-				del_from_list(c);
+425-				add_after_pos(n, c);
+426-				swp = 1;
+427-			}
+428-		}
+429-	} while (swp);
+430-}
+431-
+432-static void interrupt_connection(struct connection *c)
+433-{
+434-#ifdef HAVE_SSL
+435-	freeSSL(c->ssl);
+436-	c->ssl = NULL;
+437-#endif
+438-	close_socket(&c->sock1);
+439-	free_connection_data(c);
+440-}
+441-
+442-static void suspend_connection(struct connection *c)
+443-{
+444-	interrupt_connection(c);
+445-	setcstate(c, S_WAIT);
+446-}
+447-
+448-static int try_to_suspend_connection(struct connection *c, unsigned char *ho)
+449-{
+450-	int pri = getpri(c);
+451-	struct connection *d;
+452-	struct list_head *ld;
+453-	foreachback(struct connection, d, ld, queue) {
+454-		if (getpri(d) <= pri) return -1;
+455-		if (d->state == S_WAIT) continue;
+456-		if (d->unrestartable == 2 && getpri(d) < PRI_CANCEL) continue;
+457-		if (ho) {
+458-			unsigned char *h;
+459-			if (!(h = get_host_name(d->url))) continue;
+460-			if (strcmp(cast_const_char h, cast_const_char ho)) {
+461-				mem_free(h);
+462-				continue;
+463-			}
+464-			mem_free(h);
+465-		}
+466-		suspend_connection(d);
+467-		return 0;
+468-	}
+--
+1073-}
+1074-
+1075-void clear_connection_timeout(struct connection *c)
+1076-{
+1077:	if (c->timer != NULL) kill_timer(c->timer), c->timer = NULL;
+1078-}
+1079-
+1080-void set_connection_timeout(struct connection *c)
+1081-{
+1082-	clear_connection_timeout(c);
+1083-	c->timer = install_timer(get_timeout_value(c), connection_timeout_1, c);
+1084-}
+1085-
+1086-void set_connection_timeout_keepal(struct connection *c)
+1087-{
+1088-	if (c->keepalive && !c->unrestartable) {
+1089-		clear_connection_timeout(c);
+1090-		c->timer = install_timer(timeout_multiple_addresses * 1000, connection_timeout, c);
+1091-		return;
+1092-	}
+1093-	set_connection_timeout(c);
+1094-}
+1095-
+1096-void abort_all_connections(void)
+1097-{
+1098-	while (!list_empty(queue)) {
+1099-		struct connection *c = list_struct(queue.next, struct connection);
+1100-		setcstate(c, S_INTERRUPTED);
+1101-		abort_connection(c);
+1102-	}
+1103-	abort_all_keepalive_connections();
+1104-}
+1105-
+1106-int abort_background_connections(void)
+1107-{
+1108-	int did_something = 0;
+1109-	struct connection *c;
+1110-	struct list_head *lc;
+1111-again:
+1112-	foreach(struct connection, c, lc, queue) {
+1113-		if (getpri(c) >= PRI_CANCEL) {
+1114-			setcstate(c, S_INTERRUPTED);
+1115-			abort_connection(c);
+1116-			did_something = 1;
+1117-			goto again;
+1118-		}
+1119-	}
+1120-	return did_something | abort_all_keepalive_connections();
+1121-}
+1122-
+1123-int is_entry_used(struct cache_entry *e)
+1124-{
+1125-	struct connection *c;
+1126-	struct list_head *lc;
+1127-	foreach(struct connection, c, lc, queue) if (c->cache == e) return 1;
+1128-	return 0;
+1129-}
+1130-
+1131-struct blacklist_entry {
+1132-	list_entry_1st
+1133-	int flags;
+1134-	list_entry_last
+1135-	unsigned char host[1];
+1136-};
+1137-
+1138-static struct list_head blacklist = { &blacklist, &blacklist };
+1139-
+1140-void add_blacklist_entry(unsigned char *host, int flags)
+1141-{
+1142-	struct blacklist_entry *b;
+1143-	struct list_head *lb;
+1144-	size_t sl;
+1145-	foreach(struct blacklist_entry, b, lb, blacklist) if (!casestrcmp(host, b->host)) {
+1146-		b->flags |= flags;
+1147-		return;
+1148-	}
+1149-	sl = strlen(cast_const_char host);
+1150-	if (sl > MAXINT - sizeof(struct blacklist_entry)) overalloc();
+1151-	b = mem_alloc(sizeof(struct blacklist_entry) + sl);
+1152-	b->flags = flags;
+1153-	strcpy(cast_char b->host, cast_const_char host);
+1154-	add_to_list(blacklist, b);
+1155-}
+1156-
+1157-void del_blacklist_entry(unsigned char *host, int flags)
 
 ===== sched.c: register_bottom_half =====
 100-	uttime now = get_time();
