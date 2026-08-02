@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build-probe:
-    name: Build Milestone 0 probe
+    name: Build Milestone 0.5 and audit Links 2.30
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitarm:latest
@@ -45,9 +45,29 @@ jobs:
 
       - name: Validate helper scripts
         shell: bash
-        run: sh -n scripts/fetch-links.sh
+        run: |
+          set -euo pipefail
+          sh -n scripts/fetch-links.sh
+          sh -n scripts/inspect-links-interfaces.sh
 
-      - name: Build hardware probe
+      - name: Fetch verified Links 2.30 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/fetch-links.sh scripts/inspect-links-interfaces.sh
+          scripts/fetch-links.sh
+
+      - name: Audit upstream interfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          scripts/inspect-links-interfaces.sh artifacts/links-2.30-interface-report.txt
+          test -s artifacts/links-2.30-interface-report.txt
+          grep -q "struct graphics_driver" artifacts/links-2.30-interface-report.txt
+          grep -q "graphics_drivers" artifacts/links-2.30-interface-report.txt
+
+      - name: Build native graphics probe
         shell: bash
         run: |
           set -euo pipefail
@@ -70,10 +90,10 @@ jobs:
           arm-none-eabi-size artifacts/links-3ds.elf > artifacts/size-report.txt
           find artifacts -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
 
-      - name: Upload hardware probe
+      - name: Upload build and source audit
         uses: actions/upload-artifact@v4
         with:
-          name: links-3ds-milestone-0
+          name: links-3ds-milestone-1-source-audit
           path: artifacts/
           if-no-files-found: error
           retention-days: 30
