@@ -3,8 +3,6 @@
 #define LINKS_3DS_POINTER_PRIMARY 1u
 #define LINKS_3DS_CPAD_DIVISOR 24
 
-extern const links_3ds_event_sink_t *links_3ds_platform_get_event_sink(void);
-
 static void emit_key(const links_3ds_event_sink_t *sink,
                      uint32_t keys_down,
                      uint32_t mask,
@@ -33,14 +31,14 @@ void links_3ds_platform_poll(void)
 
     if (next_x < 0) {
         next_x = 0;
-    } else if (next_x >= GFX_3DS_TOP_WIDTH) {
-        next_x = GFX_3DS_TOP_WIDTH - 1;
+    } else if (next_x >= LINKS_3DS_SCREEN_WIDTH) {
+        next_x = LINKS_3DS_SCREEN_WIDTH - 1;
     }
 
     if (next_y < 0) {
         next_y = 0;
-    } else if (next_y >= GFX_3DS_TOP_HEIGHT) {
-        next_y = GFX_3DS_TOP_HEIGHT - 1;
+    } else if (next_y >= LINKS_3DS_SCREEN_HEIGHT) {
+        next_y = LINKS_3DS_SCREEN_HEIGHT - 1;
     }
 
     moved = next_x != cursor_x || next_y != cursor_y;
