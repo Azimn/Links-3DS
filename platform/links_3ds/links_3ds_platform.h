@@ -2,12 +2,15 @@
 #define LINKS_3DS_PLATFORM_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "../../source/gfx_3ds.h"
 
 #define LINKS_3DS_SCREEN_WIDTH 400
 #define LINKS_3DS_SCREEN_HEIGHT 240
+#define LINKS_3DS_BOTTOM_WIDTH 320
+#define LINKS_3DS_BOTTOM_HEIGHT 240
 #define LINKS_3DS_INPUT_INTERVAL_MS 16
 
 struct graphics_device;
@@ -21,7 +24,10 @@ typedef enum links_3ds_key {
     LINKS_3DS_KEY_ENTER,
     LINKS_3DS_KEY_ESCAPE,
     LINKS_3DS_KEY_BACK,
+    LINKS_3DS_KEY_FORWARD,
     LINKS_3DS_KEY_RELOAD,
+    LINKS_3DS_KEY_HOME,
+    LINKS_3DS_KEY_GOTO_URL,
     LINKS_3DS_KEY_PAGE_UP,
     LINKS_3DS_KEY_PAGE_DOWN,
     LINKS_3DS_KEY_CLOSE
@@ -37,6 +43,7 @@ typedef enum links_3ds_pointer_action {
 typedef struct links_3ds_event_sink {
     void *context;
     void (*keyboard)(void *context, links_3ds_key_t key, uint32_t modifiers);
+    void (*text)(void *context, const char *utf8, size_t length, bool submit);
     void (*pointer)(void *context,
                     int x,
                     int y,
