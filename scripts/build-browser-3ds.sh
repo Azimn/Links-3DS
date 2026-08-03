@@ -116,6 +116,7 @@ PORT_SOURCES=(
     "${ROOT_DIR}/source/gfx_3ds.c"
     "${ROOT_DIR}/src-3ds/graphics_3ds.c"
     "${ROOT_DIR}/platform/links_3ds/platform_3ds.c"
+    "${ROOT_DIR}/platform/links_3ds/browser_ui_3ds.c"
     "${ROOT_DIR}/platform/links_3ds/input_3ds.c"
     "${ROOT_DIR}/platform/links_3ds/timer_3ds.c"
     "${ROOT_DIR}/platform/links_3ds/event_bridge_3ds.c"
