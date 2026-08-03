@@ -1,19 +1,11 @@
 name: Build Links Browser 3DSX and CIA
 
-# Full browser build trigger: 2026-08-02
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - '.github/workflows/browser.yml'
-      - 'scripts/build-browser-3ds.sh'
-      - 'scripts/build-cia.sh'
-      - 'scripts/compile-upstream-3ds.py'
-      - 'scripts/generate-cia-assets.py'
-      - 'scripts/prepare-graphics-3ds.py'
-      - 'scripts/prepare-upstream-3ds.py'
-      - 'scripts/fetch-links.sh'
+      - 'scripts/**'
       - 'tests/**'
       - 'cia/**'
       - 'source/**'
@@ -21,17 +13,10 @@ on:
       - 'platform/links_3ds/**'
       - 'docs/MILESTONE_1B_RUNTIME_TEST.md'
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
       - '.github/workflows/browser.yml'
-      - 'scripts/build-browser-3ds.sh'
-      - 'scripts/build-cia.sh'
-      - 'scripts/compile-upstream-3ds.py'
-      - 'scripts/generate-cia-assets.py'
-      - 'scripts/prepare-graphics-3ds.py'
-      - 'scripts/prepare-upstream-3ds.py'
-      - 'scripts/fetch-links.sh'
+      - 'scripts/**'
       - 'tests/**'
       - 'cia/**'
       - 'source/**'
@@ -84,12 +69,22 @@ jobs:
           set -euo pipefail
           bash -n scripts/build-browser-3ds.sh
           bash -n scripts/build-cia.sh
+          bash -n scripts/build-runtime-smoke-3ds.sh
           sh -n scripts/fetch-links.sh
           python3 -m py_compile scripts/compile-upstream-3ds.py
+          python3 -m py_compile scripts/scan-portability-3ds.py
           python3 -m py_compile scripts/prepare-graphics-3ds.py
           python3 -m py_compile scripts/prepare-upstream-3ds.py
           python3 -m py_compile scripts/generate-cia-assets.py
           python3 -m unittest -v tests/test_prepare_upstream_3ds.py
+
+      - name: Build runtime smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build-runtime-smoke-3ds.sh
+          scripts/build-runtime-smoke-3ds.sh 2>&1 | tee runtime-smoke-build.log
+          test -s build/runtime-smoke-3ds/links-3ds-runtime-smoke.3dsx
 
       - name: Prepare verified 3DS driver source
         shell: bash
@@ -122,12 +117,13 @@ jobs:
           test -s build/browser-3ds/links-3ds-browser.3dsx
           test -s build/browser-3ds/links-3ds-browser.cia
           test -s build/browser-3ds/links-objects.txt
+          test -s build/browser-3ds/portability-report.txt
+          test -s build/browser-3ds/compile-portability-report.txt
           test -s build/browser-3ds/size-report.txt
           test -s build/browser-3ds/SHA256SUMS.txt
           test -s build/browser-3ds/CIA-SHA256SUMS.txt
           cat build/browser-3ds/size-report.txt
-          cat build/browser-3ds/SHA256SUMS.txt
-          cat build/browser-3ds/CIA-SHA256SUMS.txt
+          cat build/browser-3ds/compile-portability-report.txt
 
       - name: Package Homebrew Launcher test layout
         shell: bash
@@ -138,7 +134,6 @@ jobs:
           cp build/browser-3ds/links-3ds-browser.3dsx "${PACKAGE_ROOT}/"
           cp docs/MILESTONE_1B_RUNTIME_TEST.md "${PACKAGE_ROOT}/README.md"
           cp build/browser-3ds/SHA256SUMS.txt "${PACKAGE_ROOT}/"
-          test -s "${PACKAGE_ROOT}/links-3ds-browser.3dsx"
 
       - name: Upload browser build diagnostics
         if: always()
@@ -148,8 +143,11 @@ jobs:
           path: |
             browser-build.log
             cia-build.log
+            runtime-smoke-build.log
+            build/runtime-smoke-3ds/
             build/browser-3ds/links-objects.txt
             build/browser-3ds/upstream-object-paths.txt
+            build/browser-3ds/*portability-report.txt
             build/browser-3ds/logs/
             build/browser-3ds/*.map
             build/browser-3ds/*.elf
