@@ -1,5 +1,6 @@
 name: Build Links Browser 3DSX and CIA
 
+# Full browser build trigger: 2026-08-02
 on:
   push:
     branches:
