@@ -1,0 +1,58 @@
+name: Build 3DS Network Smoke Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/network-smoke.yml'
+      - 'scripts/build-network-smoke-3ds.sh'
+      - 'source/network_smoke_3ds.c'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/network-smoke.yml'
+      - 'scripts/build-network-smoke-3ds.sh'
+      - 'source/network_smoke_3ds.c'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-network-smoke:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure devkitPro PATH
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${DEVKITARM}/bin" >> "${GITHUB_PATH}"
+          printf '%s\n' "${DEVKITPRO}/tools/bin" >> "${GITHUB_PATH}"
+
+      - name: Validate build script
+        shell: bash
+        run: bash -n scripts/build-network-smoke-3ds.sh
+
+      - name: Build network smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build-network-smoke-3ds.sh
+          scripts/build-network-smoke-3ds.sh 2>&1 | tee network-smoke-build.log
+          test -s build/network-smoke-3ds/links-3ds-network-smoke.3dsx
+
+      - name: Upload network smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: links-3ds-network-smoke
+          path: |
+            network-smoke-build.log
+            build/network-smoke-3ds/
+          if-no-files-found: warn
+          retention-days: 30
