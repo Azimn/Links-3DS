@@ -1,4 +1,5 @@
 #include "links_3ds_platform.h"
+#include "browser_ui_3ds.h"
 
 #include <3ds.h>
 
@@ -22,8 +23,14 @@ bool links_3ds_platform_init(void)
         return false;
     }
 
+    if (!links_3ds_ui_init()) {
+        gfx_3ds_exit();
+        return false;
+    }
+
     soc_buffer = (u32 *)linearAlloc(LINKS_3DS_SOC_BUFFER_SIZE);
     if (soc_buffer == NULL) {
+        links_3ds_ui_shutdown();
         gfx_3ds_exit();
         return false;
     }
@@ -32,6 +39,7 @@ bool links_3ds_platform_init(void)
     if (R_FAILED(result)) {
         linearFree(soc_buffer);
         soc_buffer = NULL;
+        links_3ds_ui_shutdown();
         gfx_3ds_exit();
         return false;
     }
@@ -40,6 +48,8 @@ bool links_3ds_platform_init(void)
     gfx_set_cursor_pos(LINKS_3DS_SCREEN_WIDTH / 2,
                        LINKS_3DS_SCREEN_HEIGHT / 2);
     gfx_set_cursor_visible(true);
+    links_3ds_ui_set_status("Network ready");
+    links_3ds_ui_render();
     platform_ready = true;
     return true;
 }
@@ -59,6 +69,7 @@ void links_3ds_platform_shutdown(void)
         soc_buffer = NULL;
     }
 
+    links_3ds_ui_shutdown();
     gfx_3ds_exit();
     platform_ready = false;
 }
