@@ -23,8 +23,14 @@ static int links_key_code(links_3ds_key_t key)
         return KBD_ESC;
     case LINKS_3DS_KEY_BACK:
         return KBD_BS;
+    case LINKS_3DS_KEY_FORWARD:
+        return '>';
     case LINKS_3DS_KEY_RELOAD:
         return 'r';
+    case LINKS_3DS_KEY_HOME:
+        return KBD_HOME;
+    case LINKS_3DS_KEY_GOTO_URL:
+        return 'g';
     case LINKS_3DS_KEY_PAGE_UP:
         return KBD_PAGE_UP;
     case LINKS_3DS_KEY_PAGE_DOWN:
@@ -51,6 +57,29 @@ static void links_3ds_bridge_keyboard(void *context,
     code = links_key_code(key);
     if (code != 0) {
         dev->keyboard_handler(dev, code, (int)modifiers);
+    }
+}
+
+static void links_3ds_bridge_text(void *context,
+                                  const char *utf8,
+                                  size_t length,
+                                  bool submit)
+{
+    struct graphics_device *dev = (struct graphics_device *)context;
+    size_t index;
+
+    if (dev == NULL || dev != bridge_device || dev->keyboard_handler == NULL ||
+        utf8 == NULL) {
+        return;
+    }
+
+    /* Links accepts character input through the graphics keyboard callback.
+       UTF-8 is forwarded byte-for-byte, matching Links' internal text path. */
+    for (index = 0; index < length; ++index) {
+        dev->keyboard_handler(dev, (unsigned char)utf8[index], 0);
+    }
+    if (submit) {
+        dev->keyboard_handler(dev, KBD_ENTER, 0);
     }
 }
 
@@ -103,6 +132,7 @@ void links_3ds_event_bridge_attach(struct graphics_device *dev)
 
     sink.context = dev;
     sink.keyboard = links_3ds_bridge_keyboard;
+    sink.text = links_3ds_bridge_text;
     sink.pointer = links_3ds_bridge_pointer;
     links_3ds_platform_set_event_sink(&sink);
 }
