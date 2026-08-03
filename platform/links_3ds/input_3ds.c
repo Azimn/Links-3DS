@@ -1,9 +1,14 @@
 #include "links_3ds_platform.h"
+#include "browser_ui_3ds.h"
 
 #include <3ds.h>
 
 #define LINKS_3DS_POINTER_PRIMARY 1u
 #define LINKS_3DS_CPAD_DIVISOR 24
+
+static bool touch_was_held;
+static int last_touch_x;
+static int last_touch_y;
 
 static void emit_key(const links_3ds_event_sink_t *sink,
                      uint32_t keys_down,
@@ -24,6 +29,9 @@ void links_3ds_platform_poll(void)
     int next_x;
     int next_y;
     bool moved;
+    bool touch_held;
+    bool touch_down;
+    bool touch_up;
 
     if (!aptMainLoop()) {
         if (sink->keyboard != NULL) {
@@ -33,6 +41,30 @@ void links_3ds_platform_poll(void)
     }
 
     gfx_poll_input(&input);
+
+    touch_held = input.touch_x >= 0 && input.touch_y >= 0;
+    touch_down = touch_held && !touch_was_held;
+    touch_up = !touch_held && touch_was_held;
+    if (touch_held) {
+        last_touch_x = input.touch_x;
+        last_touch_y = input.touch_y;
+    }
+    if (touch_down || touch_held || touch_up) {
+        if (links_3ds_ui_handle_touch(last_touch_x, last_touch_y,
+                                      touch_down, touch_held, touch_up, sink)) {
+            touch_was_held = touch_held;
+            return;
+        }
+    }
+    touch_was_held = touch_held;
+
+    if ((input.keys_down & GFX_KEY_SELECT) != 0u) {
+        emit_key(sink, GFX_KEY_SELECT, GFX_KEY_SELECT, LINKS_3DS_KEY_GOTO_URL);
+        links_3ds_ui_open_keyboard(sink, NULL,
+                                   "Enter web address or search", false);
+        return;
+    }
+
     gfx_get_cursor_pos(&cursor_x, &cursor_y);
 
     next_x = cursor_x + input.cpad_dx / LINKS_3DS_CPAD_DIVISOR;
