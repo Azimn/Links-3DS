@@ -70,6 +70,7 @@ jobs:
           bash -n scripts/build-browser-3ds.sh
           bash -n scripts/build-cia.sh
           bash -n scripts/build-runtime-smoke-3ds.sh
+          bash -n scripts/build-network-smoke-3ds.sh
           sh -n scripts/fetch-links.sh
           python3 -m py_compile scripts/compile-upstream-3ds.py
           python3 -m py_compile scripts/scan-portability-3ds.py
@@ -85,6 +86,14 @@ jobs:
           chmod +x scripts/build-runtime-smoke-3ds.sh
           scripts/build-runtime-smoke-3ds.sh 2>&1 | tee runtime-smoke-build.log
           test -s build/runtime-smoke-3ds/links-3ds-runtime-smoke.3dsx
+
+      - name: Build network smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build-network-smoke-3ds.sh
+          scripts/build-network-smoke-3ds.sh 2>&1 | tee network-smoke-build.log
+          test -s build/network-smoke-3ds/links-3ds-network-smoke.3dsx
 
       - name: Prepare verified 3DS driver source
         shell: bash
@@ -144,7 +153,9 @@ jobs:
             browser-build.log
             cia-build.log
             runtime-smoke-build.log
+            network-smoke-build.log
             build/runtime-smoke-3ds/
+            build/network-smoke-3ds/
             build/browser-3ds/links-objects.txt
             build/browser-3ds/upstream-object-paths.txt
             build/browser-3ds/*portability-report.txt
