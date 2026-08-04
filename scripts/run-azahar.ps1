@@ -4,14 +4,21 @@ param(
 
     [string]$AppPath = "build/browser-3ds/links-3ds-browser.3dsx",
 
-    [switch]$RuntimeSmoke
+    [switch]$RuntimeSmoke,
+    [switch]$NetworkSmoke
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
+if ($RuntimeSmoke -and $NetworkSmoke) {
+    throw "Choose only one diagnostic mode: -RuntimeSmoke or -NetworkSmoke."
+}
 if ($RuntimeSmoke) {
     $AppPath = "build/runtime-smoke-3ds/links-3ds-runtime-smoke.3dsx"
+}
+if ($NetworkSmoke) {
+    $AppPath = "build/network-smoke-3ds/links-3ds-network-smoke.3dsx"
 }
 
 if (-not [System.IO.Path]::IsPathRooted($AzaharPath)) {
