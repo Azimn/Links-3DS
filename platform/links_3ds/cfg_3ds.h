@@ -2,6 +2,19 @@
 #define LINKS_3DS_CFG_3DS_H
 
 /* Target facts that must override host configure assumptions. */
+
+/*
+ * The source archive is checksum-pinned to Links 2.30. These values normally
+ * come from a native configure-generated config.h, which must not be reused
+ * as a target capability map for libctru.
+ */
+#ifndef VERSION
+#define VERSION "2.30"
+#endif
+#ifndef DEBUGLEVEL
+#define DEBUGLEVEL 0
+#endif
+
 #ifndef HAVE_DIRENT_H
 #define HAVE_DIRENT_H 1
 #endif
@@ -23,6 +36,13 @@
 /* Graphics mode uses the devkitPro 3ds-libpng portlib. */
 #ifndef HAVE_PNG_H
 #define HAVE_PNG_H 1
+#endif
+
+#ifndef HAVE_SETJMP_H
+#define HAVE_SETJMP_H 1
+#endif
+#ifndef HAVE_SYS_WAIT_H
+#define HAVE_SYS_WAIT_H 1
 #endif
 
 /* The 3DS homebrew runtime has no process creation model. */
