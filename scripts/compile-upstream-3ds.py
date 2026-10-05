@@ -104,6 +104,7 @@ def main() -> int:
 
     if failures:
         for object_name, log, category in failures:
+            print(f"::error title=Links 3DS portability::{object_name}: {category} ({log})")
             print(f"\n===== {category}: {object_name} =====")
             print(log.read_text(encoding="utf-8"), end="")
         return 1
