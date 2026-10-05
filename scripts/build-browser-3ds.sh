@@ -77,6 +77,7 @@ if "&links_3ds_driver" not in source[array.end():]:
     source = source[:array.end()] + "\n\t&links_3ds_driver," + source[array.end():]
 
 path.write_text(source, encoding="utf-8")
+PY
 
 cat > "${BUILD_DIR}/print-objs.mk" <<EOF
 include ${UPSTREAM_DIR}/Makefile
