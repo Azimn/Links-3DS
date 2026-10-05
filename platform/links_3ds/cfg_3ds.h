@@ -15,6 +15,16 @@
 #define HAVE_STRUCT_TIMEZONE 1
 #endif
 
+/* libctru exposes the standard socket length ABI. */
+#ifndef HAVE_SOCKLEN_T
+#define HAVE_SOCKLEN_T 1
+#endif
+
+/* Graphics mode uses the devkitPro 3ds-libpng portlib. */
+#ifndef HAVE_PNG_H
+#define HAVE_PNG_H 1
+#endif
+
 /* The 3DS homebrew runtime has no process creation model. */
 #ifdef HAVE_FORK
 #undef HAVE_FORK
