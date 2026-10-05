@@ -37,6 +37,9 @@
 #ifndef HAVE_PNG_H
 #define HAVE_PNG_H 1
 #endif
+#ifndef HAVE_PNG_SET_RGB_TO_GRAY
+#define HAVE_PNG_SET_RGB_TO_GRAY 1
+#endif
 
 #ifndef HAVE_SETJMP_H
 #define HAVE_SETJMP_H 1
