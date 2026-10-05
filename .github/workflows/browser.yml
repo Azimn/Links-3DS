@@ -50,6 +50,13 @@ jobs:
           printf '%s\n' "${DEVKITARM}/bin" >> "${GITHUB_PATH}"
           printf '%s\n' "${DEVKITPRO}/tools/bin" >> "${GITHUB_PATH}"
 
+      - name: Install 3DS PNG portlib
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v dkp-pacman
+          dkp-pacman -S --needed --noconfirm 3ds-libpng
+
       - name: Verify host and 3DS toolchains
         shell: bash
         run: |
@@ -62,6 +69,9 @@ jobs:
           command -v 3dsxtool
           test -d "${DEVKITPRO}/libctru/include"
           test -d "${DEVKITPRO}/libctru/lib"
+          test -f "${DEVKITPRO}/portlibs/3ds/include/png.h"
+          test -f "${DEVKITPRO}/portlibs/3ds/lib/libpng.a"
+          test -f "${DEVKITPRO}/portlibs/3ds/lib/libz.a"
 
       - name: Validate build scripts
         shell: bash
