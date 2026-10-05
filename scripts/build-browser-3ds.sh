@@ -48,20 +48,35 @@ python3 - "${UPSTREAM_DIR}/drivers.c" <<'PY'
 from pathlib import Path
 import re
 import sys
+
 path = Path(sys.argv[1])
 source = path.read_text(encoding="utf-8")
-if "extern struct graphics_driver links_3ds_driver;" not in source:
-    marker = re.search(r"struct\s+graphics_driver\s*\*\s*graphics_drivers\s*\[\s*\]\s*=\s*\{", source)
-    if marker is None:
-        raise SystemExit("unable to locate graphics_drivers array in drivers.c")
-    source = source[:marker.start()] + "extern struct graphics_driver links_3ds_driver;\n\n" + source[marker.start():]
-array = re.search(r"(struct\s+graphics_driver\s*\*\s*graphics_drivers\s*\[\s*\]\s*=\s*\{)", source)
+array = re.search(
+    r"(?m)^(?P<indent>[ \t]*)(?P<storage>static[ \t]+)?"
+    r"struct\s+graphics_driver\s*\*\s*graphics_drivers\s*\[\s*\]\s*=\s*\{",
+    source,
+)
 if array is None:
-    raise SystemExit("unable to locate graphics_drivers initializer")
+    raise SystemExit("unable to locate graphics_drivers array in drivers.c")
+
+if "extern struct graphics_driver links_3ds_driver;" not in source:
+    source = (
+        source[:array.start()]
+        + "extern struct graphics_driver links_3ds_driver;\n\n"
+        + source[array.start():]
+    )
+    array = re.search(
+        r"(?m)^(?P<indent>[ \t]*)(?P<storage>static[ \t]+)?"
+        r"struct\s+graphics_driver\s*\*\s*graphics_drivers\s*\[\s*\]\s*=\s*\{",
+        source,
+    )
+    if array is None:
+        raise SystemExit("graphics_drivers array disappeared after extern insertion")
+
 if "&links_3ds_driver" not in source[array.end():]:
     source = source[:array.end()] + "\n\t&links_3ds_driver," + source[array.end():]
+
 path.write_text(source, encoding="utf-8")
-PY
 
 cat > "${BUILD_DIR}/print-objs.mk" <<EOF
 include ${UPSTREAM_DIR}/Makefile
@@ -85,6 +100,7 @@ COMMON_CFLAGS=(
     -mword-relocations -ffunction-sections -fdata-sections
     -DG -DGRDRV_3DS
     -I"${DEVKITPRO}/libctru/include"
+    -I"${DEVKITPRO}/portlibs/3ds/include"
     -I"${UPSTREAM_DIR}"
     -I"${ROOT_DIR}/source"
     -I"${ROOT_DIR}/platform/links_3ds"
@@ -135,7 +151,9 @@ arm-none-eabi-gcc \
     -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft \
     -Wl,--gc-sections -Wl,-Map,"${BUILD_DIR}/links-3ds-browser.map" \
     "${OBJECTS[@]}" \
-    -L"${DEVKITPRO}/libctru/lib" -lctru -lm \
+    -L"${DEVKITPRO}/libctru/lib" \
+    -L"${DEVKITPRO}/portlibs/3ds/lib" \
+    -lctru -lpng -lz -lm \
     -o "${BUILD_DIR}/links-3ds-browser.elf"
 
 3dsxtool "${BUILD_DIR}/links-3ds-browser.elf" "${BUILD_DIR}/links-3ds-browser.3dsx"
