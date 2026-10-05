@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <setjmp.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -26,11 +27,11 @@
 #include <unistd.h>
 
 /*
- * The host configure pass supplies Links build constants and portable feature
- * facts. Load it first, then apply target overrides so host-only facilities do
- * not leak into the 3DS build.
+ * Do not import host config.h into the ARM build. The host configure pass is
+ * used only to generate Links' Makefile and object manifest. Target facts live
+ * in cfg_3ds.h so Linux feature probes cannot silently select unsupported 3DS
+ * code paths.
  */
-#include "config.h"
 #include "cfg_3ds.h"
 
 #ifndef O_BINARY
