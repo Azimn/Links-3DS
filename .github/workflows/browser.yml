@@ -25,6 +25,10 @@ on:
       - 'docs/MILESTONE_1B_RUNTIME_TEST.md'
   workflow_dispatch:
 
+concurrency:
+  group: links-3ds-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
